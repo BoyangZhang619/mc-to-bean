@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "mcperler",
+  "version": "${version}",
+  "name": "MC Perler Pattern",
+  "description": "将 Minecraft 中的内容转化为拼豆图纸。支持游戏内二维截面采样(F2)、视角截图(F3)、墙面视图(F4)。",
+  "authors": [
+    "ZhangBY619"
+  ],
+  "contact": {
+    "homepage": "https://github.com/ZhangBY619/mc-to-bean",
+    "sources": "https://github.com/ZhangBY619/mc-to-bean"
+  },
+  "license": "MIT",
+  "icon": "assets/mcperler/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.mcperler.McPerlerMod"
+    ],
+    "client": [
+      "dev.mcperler.McPerlerClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": ">=26.2",
+    "java": ">=25",
+    "fabric-api": ">=0.152.0"
+  },
+  "suggests": {}
+}

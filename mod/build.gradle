@@ -1,0 +1,67 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        // 直接解析 net.fabricmc:fabric-loom 模块, 绕过插件 marker (Fabric maven 不发布 marker, SNAPSHOT 只能这样加载)
+        classpath 'net.fabricmc:fabric-loom:1.17-SNAPSHOT'
+    }
+}
+
+plugins {
+    id 'maven-publish'
+}
+
+apply plugin: 'net.fabricmc.fabric-loom'
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    // Loom 自动添加 Fabric Maven 和 Mojang Maven，无需手动配置
+}
+
+dependencies {
+    // Minecraft 26.2 — 26.1 起 Mojang 不再混淆, Loom 走 disableObfuscation 模式:
+    // 不注册 remap 配置 (无 modImplementation), 依赖直接用普通 implementation (官方模板同款)
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+
+    // Fabric Loader
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    // Fabric API — 提供命令注册、事件系统等基础设施
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    // Minecraft 26.2 需要 Java 25
+    it.options.release = 25
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+// 可选：发布到本地 Maven 仓库
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            from components.java
+        }
+    }
+}

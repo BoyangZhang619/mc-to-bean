@@ -1,0 +1,27 @@
+# 大资源 / 生成物
+assets/
+26.2.zip
+patterns/
+pattern-tool/output/
+
+# 模组构建产物（jar 通过 GitHub Release 分发）
+mod/build/
+mod/.gradle/
+mod/run/
+mod/*.class
+
+# Web 应用
+web-app/node_modules/
+web-app/dist/
+
+# 本地配置
+.claude/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 通用
+*.log
+.DS_Store
+Thumbs.db

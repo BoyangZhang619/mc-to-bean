@@ -1,0 +1,59 @@
+// ============================================================
+// 拼豆图纸处理平台 -- 全局 SCSS 变量
+// 色板: 黑白灰高级简约
+// ============================================================
+
+// 基础色板
+$color-black: #111;
+$color-dark: #333;
+$color-mid-dark: #555;
+$color-mid: #888;
+$color-mid-light: #aaa;
+$color-light: #ddd;
+$color-light-bg: #eee;
+$color-bg: #f5f5f5;
+$color-white: #fff;
+
+// 语义色 (只用黑白灰)
+$color-primary: $color-black;
+$color-primary-hover: $color-dark;
+$color-border: $color-light;
+$color-border-focus: $color-mid-dark;
+$color-text: $color-black;
+$color-text-secondary: $color-mid-dark;
+$color-text-muted: $color-mid;
+$color-bg-canvas: $color-white;
+$color-bg-canvas-dark: $color-bg;
+$color-bg-panel: $color-white;
+$color-bg-hover: $color-bg;
+$color-bg-active: $color-light-bg;
+$color-overlay: rgba(17, 17, 17, 0.4);
+$color-danger: #c0392b;
+$color-success: #27ae60;
+
+// 布局
+$header-height: 56px;
+$toolbar-width: 52px;
+$palette-width: 260px;
+$mobile-breakpoint: 1024px;
+$z-header: 100;
+$z-toolbar: 90;
+$z-palette: 80;
+$z-overlay: 200;
+$z-toast: 300;
+$z-modal: 400;
+
+// 圆角
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+
+// 阴影
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+$shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+// 过渡
+$transition-fast: 120ms ease;
+$transition-normal: 200ms ease;
+$transition-slow: 350ms ease;
