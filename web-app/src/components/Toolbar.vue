@@ -5,7 +5,8 @@
 
 import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editorStore'
-import type { ToolType, IconName } from '@/types'
+import type { ToolType } from '@/types'
+import type { IconName } from '@/components/Icon.vue'
 import Icon from './Icon.vue'
 
 const editor = useEditorStore()
