@@ -38,6 +38,11 @@ const router = createRouter({
       name: 'font-generator',
       component: () => import('@/views/FontGeneratorView.vue'),
     },
+    {
+      path: '/docs',
+      name: 'docs',
+      component: () => import('@/views/DocsView.vue'),
+    },
   ],
 })
 

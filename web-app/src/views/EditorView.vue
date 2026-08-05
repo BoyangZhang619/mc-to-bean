@@ -20,6 +20,10 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import NewPatternDialog from '@/components/NewPatternDialog.vue'
 import Toast from '@/components/Toast.vue'
 import Icon from '@/components/Icon.vue'
+import { registerDefaultTools } from '@/utils/toolRegistry'
+
+// P3-2: 初始化工具注册表
+registerDefaultTools()
 
 const route = useRoute()
 const router = useRouter()
@@ -71,6 +75,14 @@ onMounted(async () => {
   }
   editor.loadPattern(pattern)
   loading.value = false
+})
+
+// 颜色替换结果 toast
+watch(() => editor.replaceMessage, (msg) => {
+  if (msg) {
+    toastRef.value?.show(msg, msg.startsWith('已替换') ? 'success' : 'info')
+    editor.replaceMessage = null
+  }
 })
 
 // 离开确认

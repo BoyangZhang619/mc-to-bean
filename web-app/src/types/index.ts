@@ -55,11 +55,13 @@ export type ToolType =
   | 'rect'
   | 'line'
   | 'move'
+  | 'replace'
+  | 'select'
 
 /** 历史记录条目 */
 export interface HistoryEntry {
-  /** 被修改的坐标集 (压缩存储: "x,y" 字符串数组) */
-  cells: string[]
+  /** 被修改的坐标集: [x, y] 元组数组 (markRaw 防深层响应式) */
+  cells: [number, number][]
   /** 修改前的值 */
   prevValues: number[]
   /** 修改后的值 */
@@ -68,7 +70,21 @@ export interface HistoryEntry {
   tool: ToolType
   /** 时间戳 */
   timestamp: number
+  /** 色板变更 (仅 palette 编辑操作使用) */
+  paletteChanges?: { index: number; oldRgb: [number, number, number]; newRgb: [number, number, number] }[]
+  /** resize 快照: 保存 resize 前的 pattern 完整状态以便撤销 */
+  resizeSnapshot?: ResizeSnapshot
 }
+
+/** resize 前的完整快照 */
+export interface ResizeSnapshot {
+  width: number
+  height: number
+  grid: number[][]
+}
+
+/** 画笔尺寸 */
+export type BrushSize = 1 | 2 | 3 | 4
 
 /** 编辑器缩放状态 */
 export interface ViewportState {
@@ -85,3 +101,26 @@ export type ResizeAnchor =
 
 /** Resize 填充策略 */
 export type ResizeFill = 'crop' | 'extend' | 'scale'
+
+/** 选区范围 */
+export interface SelectionRect {
+  x1: number; y1: number; x2: number; y2: number
+}
+
+/** 图层定义 */
+export interface Layer {
+  name: string
+  grid: number[][]
+  visible: boolean
+}
+
+/** 工具处理器接口 (P3-2: 工具注册表) */
+export interface ToolHandler {
+  type: ToolType
+  icon: string
+  label: string
+  shortcut: string
+  onPointerDown?(pos: { x: number; y: number }, editor: any): void
+  onPointerMove?(pos: { x: number; y: number }, editor: any): void
+  onPointerUp?(pos: { x: number; y: number }, editor: any): void
+}

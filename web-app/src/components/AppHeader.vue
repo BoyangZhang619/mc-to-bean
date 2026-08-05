@@ -22,6 +22,7 @@ const navItems = [
   { to: '/official', label: '官方图纸', icon: 'palette' as const },
   { to: '/tools/fonts', label: '字体生成', icon: 'rename' as const },
   { to: '/import', label: '导入', icon: 'import' as const },
+  { to: '/docs', label: '文档', icon: 'info' as const },
 ]
 
 function isActive(path: string): boolean {

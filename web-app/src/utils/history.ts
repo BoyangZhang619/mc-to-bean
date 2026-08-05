@@ -1,6 +1,7 @@
 /**
  * 撤销/重做历史栈
- * 合并连续同类操作，上限约 200
+ * 合并连续同类操作，上限 200
+ * cells: [x, y] 元组 (markRaw 防深层响应式)
  */
 
 import type { HistoryEntry, ToolType } from '@/types'
@@ -13,17 +14,31 @@ export class HistoryStack {
 
   /** 推送一条操作记录 */
   push(entry: HistoryEntry): void {
-    // 尝试与栈顶合并: 同类操作且间隔 < 2 秒
+    // 调色板变更不合并，直接入栈
+    if (entry.paletteChanges) {
+      this.undoStack.push(entry)
+      this.redoStack = []
+      this.trimUndo()
+      return
+    }
+
+    // 尝试与栈顶合并: 同类 grid 操作且间隔 < 2 秒
     const top = this.undoStack[this.undoStack.length - 1]
-    if (top && top.tool === entry.tool && (entry.timestamp - top.timestamp) < 2000) {
-      // 合并: 追加 cells, 跳过已在合并记录中的重复 cell
-      const existingKeys = new Set(top.cells)
+    if (
+      top &&
+      !top.paletteChanges &&
+      top.tool === entry.tool &&
+      (entry.timestamp - top.timestamp) < 2000
+    ) {
+      const existingKeys = new Set(top.cells.map(([x, y]) => `${x},${y}`))
       for (let i = 0; i < entry.cells.length; i++) {
-        if (!existingKeys.has(entry.cells[i])) {
-          top.cells.push(entry.cells[i])
+        const [x, y] = entry.cells[i]
+        const key = `${x},${y}`
+        if (!existingKeys.has(key)) {
+          top.cells.push([x, y])
           top.prevValues.push(entry.prevValues[i])
           top.nextValues.push(entry.nextValues[i])
-          existingKeys.add(entry.cells[i])
+          existingKeys.add(key)
         }
       }
       top.timestamp = entry.timestamp
@@ -31,16 +46,16 @@ export class HistoryStack {
       this.undoStack.push(entry)
     }
 
-    // 清空 redo
     this.redoStack = []
+    this.trimUndo()
+  }
 
-    // 上限裁剪
+  private trimUndo() {
     while (this.undoStack.length > MAX_HISTORY) {
       this.undoStack.shift()
     }
   }
 
-  /** 撤销: 返回需要恢复的操作 */
   undo(): HistoryEntry | null {
     const entry = this.undoStack.pop()
     if (entry) {
@@ -50,7 +65,6 @@ export class HistoryStack {
     return null
   }
 
-  /** 重做: 返回需要重新执行的操作 */
   redo(): HistoryEntry | null {
     const entry = this.redoStack.pop()
     if (entry) {
@@ -60,17 +74,9 @@ export class HistoryStack {
     return null
   }
 
-  /** 是否有可撤销 */
-  get canUndo(): boolean {
-    return this.undoStack.length > 0
-  }
+  get canUndo(): boolean { return this.undoStack.length > 0 }
+  get canRedo(): boolean { return this.redoStack.length > 0 }
 
-  /** 是否有可重做 */
-  get canRedo(): boolean {
-    return this.redoStack.length > 0
-  }
-
-  /** 清空历史 */
   clear(): void {
     this.undoStack = []
     this.redoStack = []

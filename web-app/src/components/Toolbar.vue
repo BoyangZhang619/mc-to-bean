@@ -16,9 +16,18 @@ const toolDefs: { type: ToolType; icon: IconName; label: string; shortcut: strin
   { type: 'eraser', icon: 'eraser', label: '橡皮', shortcut: 'E' },
   { type: 'fill', icon: 'fill', label: '填充', shortcut: 'G' },
   { type: 'eyedropper', icon: 'eyedropper', label: '取色器', shortcut: 'I' },
+  { type: 'replace', icon: 'replace', label: '替换', shortcut: 'X' },
+  { type: 'select', icon: 'crosshair', label: '选区', shortcut: 'S' },
   { type: 'rect', icon: 'rect', label: '矩形', shortcut: 'R' },
   { type: 'line', icon: 'line', label: '直线', shortcut: 'L' },
   { type: 'move', icon: 'move', label: '平移', shortcut: 'H' },
+]
+
+const brushSizes: { size: 1 | 2 | 3 | 4; label: string }[] = [
+  { size: 1, label: '1' },
+  { size: 2, label: '2' },
+  { size: 3, label: '3' },
+  { size: 4, label: '4' },
 ]
 
 const bgColors = ['#ffffff', '#f5f5f5', '#eeeeee', '#dddddd', '#aaaaaa', '#333333']
@@ -46,6 +55,41 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
         <span class="tool-label">{{ t.label }}</span>
         <span class="tool-shortcut">{{ t.shortcut }}</span>
       </button>
+    </div>
+
+    <div class="tool-divider" />
+
+    <!-- 画笔尺寸 (仅 brush/eraser/line 时显示) -->
+    <div class="tool-group" v-if="editor.currentTool === 'brush' || editor.currentTool === 'eraser' || editor.currentTool === 'line'">
+      <span class="group-label">尺寸</span>
+      <div class="brush-size-row">
+        <button
+          v-for="bs in brushSizes"
+          :key="bs.size"
+          class="brush-size-btn"
+          :class="{ active: editor.brushSize === bs.size }"
+          @click="editor.brushSize = bs.size"
+          :title="`${bs.size}x${bs.size}`"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <rect :x="5 - Math.floor(bs.size / 2)" :y="5 - Math.floor(bs.size / 2)"
+              :width="bs.size" :height="bs.size" fill="currentColor" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 颜色替换状态 -->
+    <div class="tool-group" v-if="editor.currentTool === 'replace'">
+      <span class="replace-status">
+        <template v-if="editor.replaceSourceIndex !== null">
+          源色已选<br/>点击色板选目标色
+          <span class="replace-cancel" @click="editor.cancelReplace()">取消</span>
+        </template>
+        <template v-else>
+          点击画布<br/>选择要替换的颜色
+        </template>
+      </span>
     </div>
 
     <div class="tool-divider" />
@@ -326,6 +370,43 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
   &:hover {
     transform: scale(1.1);
     border-color: $color-mid-dark;
+  }
+}
+
+.brush-size-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  @include mobile { flex-direction: row; }
+}
+
+.brush-size-btn {
+  @include flex-center;
+  width: 28px;
+  height: 28px;
+  border-radius: $radius-sm;
+  color: $color-mid;
+  transition: all $transition-fast;
+
+  &:hover { background: $color-bg; color: $color-black; }
+  &.active { background: $color-black; color: $color-white; }
+}
+
+.replace-status {
+  font-size: 10px;
+  color: $color-text-secondary;
+  text-align: center;
+  line-height: 1.4;
+  padding: 4px 2px;
+
+  .replace-cancel {
+    display: block;
+    color: $color-danger;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 2px;
+    &:hover { text-decoration: underline; }
   }
 }
 </style>

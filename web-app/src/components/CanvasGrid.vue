@@ -2,7 +2,7 @@
 /**
  * 画布组件 -- 离屏 canvas + 主 canvas 架构
  * 离屏: 完整静态图纸 (格子+背景+网格线)
- * 主: 每帧 drawImage 离屏 + overlay
+ * 主: 按需 drawImage 离屏 + overlay (hover/viewport 变化时)
  */
 import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useEditorStore } from '@/stores/editorStore'
@@ -17,13 +17,12 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
 const canvasSize = ref({ width: 0, height: 0 })
 
-// 离屏 canvas
 const offscreen = ref<OffscreenData | null>(null)
-
 const { screenToGrid } = useCanvas(canvasRef)
 const currentCell = computed(() => editor.hoverCell)
 
 let resizeObserver: ResizeObserver | null = null
+let renderPending = false
 
 function updateCanvasSize() {
   if (!containerRef.value) return
@@ -35,7 +34,6 @@ function updateCanvasSize() {
   }
 }
 
-/** 创建/重建离屏 (pattern 加载、背景色/网格切换时调用) */
 function buildOffscreen() {
   if (!editor.pattern) { offscreen.value = null; return }
   offscreen.value = createOffscreen(editor.pattern, {
@@ -46,7 +44,6 @@ function buildOffscreen() {
   })
 }
 
-/** 增量更新离屏: 读取 lastFlushedCells 中的格子 */
 function applyDirtyToOffscreen() {
   if (!offscreen.value || !editor.pattern) return
   const flushed = editor.lastFlushedCells
@@ -61,8 +58,8 @@ function applyDirtyToOffscreen() {
   editor.lastFlushedCells = []
 }
 
-/** 渲染主 canvas */
 function render() {
+  renderPending = false
   const canvas = canvasRef.value
   if (!canvas || !editor.pattern || !offscreen.value) return
 
@@ -74,11 +71,9 @@ function render() {
   canvas.style.width = `${canvasSize.value.width / dpr}px`
   canvas.style.height = `${canvasSize.value.height / dpr}px`
 
-  // 1. 离屏 → 主 canvas
   paintFromOffscreen(ctx, offscreen.value, editor.viewport,
     canvasSize.value.width, canvasSize.value.height, dpr, editor.backgroundColor)
 
-  // 2. Overlay (悬停十字、rect/line 预览)
   paintOverlay(ctx, editor.viewport, {
     showGrid: editor.showGrid,
     gridColor: 'rgba(0,0,0,0.12)',
@@ -87,28 +82,37 @@ function render() {
     tool: editor.currentTool,
     rectStart: editor.rectStart,
     lineStart: editor.lineStart,
+    selection: editor.selection,
   }, dpr)
 }
 
-// 监听: 需要全量重建离屏的场景
+/** 合并 rAF: 同帧多次触发只渲染一次 */
+function scheduleRender() {
+  if (!renderPending) {
+    renderPending = true
+    requestAnimationFrame(render)
+  }
+}
+
+// 全量重建离屏
 watch(
   () => [editor.pattern?.id, editor.showGrid, editor.gridLabelMode, editor.backgroundColor],
-  () => { buildOffscreen() },
+  () => { buildOffscreen(); scheduleRender() },
 )
 
-// 监听: editor.palette 编辑后重建离屏 (颜色变了)
+// palette 编辑后重建离屏颜色
 watch(
   () => editor.pattern?.palette,
   () => {
     if (offscreen.value && editor.pattern) {
       rebuildOffscreenColors(offscreen.value, editor.pattern, editor.backgroundColor, editor.showGrid, 'rgba(0,0,0,0.12)', editor.gridLabelMode)
+      scheduleRender()
     }
   },
   { deep: true }
 )
 
-// 监听: renderVersion 变化 = 更新离屏
-// lastFlushedCells 非空 → 增量; 为空 → 全量重建 (batch 操作)
+// renderVersion 变化 → 更新离屏
 watch(
   () => editor.renderVersion,
   () => {
@@ -117,18 +121,16 @@ watch(
     } else {
       buildOffscreen()
     }
+    scheduleRender()
   },
 )
 
-// 监听: viewport/hover/preview 变化 → 仅重绘主 canvas overlay
+// viewport/hover/preview 变化 → 仅重绘 overlay (合并 rAF)
 watch(
-  () => [editor.renderVersion, editor.viewport, editor.hoverCell, editor.rectStart, editor.lineStart],
-  () => { requestAnimationFrame(render) },
+  () => [editor.viewport, editor.hoverCell, editor.rectStart, editor.lineStart],
+  () => { scheduleRender() },
   { deep: true }
 )
-
-// 每 16ms 轻量刷新 overlay (十字光标丝滑跟随)
-let overlayTimer: ReturnType<typeof setInterval> | null = null
 
 function zoomToFit() {
   if (!containerRef.value || !editor.pattern) return
@@ -151,7 +153,7 @@ onMounted(() => {
   if (containerRef.value) {
     resizeObserver = new ResizeObserver(() => {
       updateCanvasSize()
-      nextTick(render)
+      scheduleRender()
       if (!initialFitDone && containerRef.value) {
         const r = containerRef.value.getBoundingClientRect()
         if (r.width > 0 && r.height > 0) { initialFitDone = true; zoomToFit() }
@@ -165,13 +167,10 @@ onMounted(() => {
     render()
     setTimeout(() => { if (!initialFitDone) { initialFitDone = true; zoomToFit() } }, 200)
   })
-  // overlay 十字光标轻量刷新
-  overlayTimer = setInterval(render, 33) // ~30fps overlay
 })
 
 onUnmounted(() => {
   resizeObserver?.disconnect()
-  if (overlayTimer) { clearInterval(overlayTimer); overlayTimer = null }
 })
 
 defineExpose({ screenToGrid, render, zoomToFit })

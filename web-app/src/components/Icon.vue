@@ -48,6 +48,7 @@ export type IconName =
   | 'expand'
   | 'collapse'
   | 'bg-color'
+  | 'replace'
 </script>
 
 <template>
@@ -316,6 +317,16 @@ export type IconName =
     <template v-else-if="name === 'bg-color'">
       <rect x="2" y="2" width="20" height="20" rx="4" />
       <rect x="6" y="6" width="12" height="12" rx="2" />
+    </template>
+
+    <!-- 颜色替换 -->
+    <template v-else-if="name === 'replace'">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="M7 8 L17 8" />
+      <path d="M12 4 L12 8 M12 12 L12 20" />
+      <circle cx="12" cy="10" r="2" />
+      <rect x="5" y="14" width="6" height="6" rx="1" fill="currentColor" opacity="0.3" />
+      <rect x="13" y="14" width="6" height="6" rx="1" fill="currentColor" opacity="0.7" />
     </template>
   </svg>
 </template>

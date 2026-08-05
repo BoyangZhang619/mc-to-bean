@@ -68,6 +68,12 @@ export function useCanvas(canvasRef: Ref<HTMLCanvasElement | null>) {
         editor.doFloodFill(pos.x, pos.y)
       } else if (editor.currentTool === 'eyedropper') {
         editor.pickColor(pos.x, pos.y)
+      } else if (editor.currentTool === 'replace') {
+        editor.pickColor(pos.x, pos.y)
+      } else if (editor.currentTool === 'select') {
+        // 选区: 开始拖拽框选
+        editor.setSelectStart({ x: pos.x, y: pos.y })
+        editor.setSelection({ x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y })
       } else if (editor.currentTool === 'rect') {
         editor.rectStart = { x: pos.x, y: pos.y }
       } else if (editor.currentTool === 'line') {
@@ -98,11 +104,13 @@ export function useCanvas(canvasRef: Ref<HTMLCanvasElement | null>) {
     }
 
     if (pointerIsDown.value && pos) {
-      if (editor.currentTool === 'brush' || editor.currentTool === 'eraser') {
+      if (editor.currentTool === 'select' && editor.selectStart) {
+        // 拖拽选区: 更新右下角
+        editor.setSelection({ x1: editor.selectStart.x, y1: editor.selectStart.y, x2: pos.x, y2: pos.y })
+      } else if (editor.currentTool === 'brush' || editor.currentTool === 'eraser') {
         editor.paintCell(pos.x, pos.y)
         scheduleFlush()
       }
-      // rect/line: hoverCell 已更新, overlay 预览自动刷新
     }
   }
 

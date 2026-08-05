@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 import { parseContractJson, exportContractJson } from '@/utils/contract'
 import { floodFill } from '@/utils/floodFill'
 import { luma, groupByBeadCode, exportPatternPanelPng, exportFullPng } from '@/utils/renderer'
+import { HistoryStack } from '@/utils/history'
 import type { Pattern, PaletteEntry } from '@/types'
 
 // ---- renderer 工具函数 ----
@@ -451,5 +452,108 @@ describe('flood fill', () => {
       [1, 1],
       [1, 1],
     ])
+  })
+})
+
+// ---- HistoryStack (P1-2: tuple cells + P1-1: palette undo) ----
+
+describe('HistoryStack with tuple cells', () => {
+  it('pushes and undoes grid operations', () => {
+    const stack = new HistoryStack()
+    stack.push({
+      cells: [[0, 0], [1, 1]],
+      prevValues: [5, 3],
+      nextValues: [9, 9],
+      tool: 'brush',
+      timestamp: 1000,
+    })
+    expect(stack.canUndo).toBe(true)
+    expect(stack.canRedo).toBe(false)
+
+    const entry = stack.undo()
+    expect(entry).not.toBeNull()
+    expect(entry!.cells).toEqual([[0, 0], [1, 1]])
+    expect(entry!.prevValues).toEqual([5, 3])
+    expect(entry!.nextValues).toEqual([9, 9])
+    expect(stack.canUndo).toBe(false)
+    expect(stack.canRedo).toBe(true)
+  })
+
+  it('merges same-tool operations within 2s', () => {
+    const stack = new HistoryStack()
+    stack.push({
+      cells: [[0, 0]], prevValues: [1], nextValues: [2],
+      tool: 'brush', timestamp: 1000,
+    })
+    stack.push({
+      cells: [[1, 1], [2, 2]], prevValues: [3, 5], nextValues: [2, 2],
+      tool: 'brush', timestamp: 2000,
+    })
+    expect(stack.canUndo).toBe(true)
+    const entry = stack.undo()
+    expect(entry!.cells.length).toBe(3) // merged
+  })
+
+  it('does not merge paletteChanges entries', () => {
+    const stack = new HistoryStack()
+    stack.push({
+      cells: [], prevValues: [], nextValues: [],
+      tool: 'brush', timestamp: 1000,
+      paletteChanges: [{ index: 0, oldRgb: [255,0,0] as [number,number,number], newRgb: [0,255,0] as [number,number,number] }],
+    })
+    stack.push({
+      cells: [], prevValues: [], nextValues: [],
+      tool: 'brush', timestamp: 1500,
+      paletteChanges: [{ index: 0, oldRgb: [0,255,0] as [number,number,number], newRgb: [0,0,255] as [number,number,number] }],
+    })
+    // palette entries don't merge, so 2 separate undo entries
+    expect(stack.canUndo).toBe(true)
+    stack.undo()
+    expect(stack.canUndo).toBe(true)
+    stack.undo()
+    expect(stack.canUndo).toBe(false)
+  })
+
+  it('redoes after undo', () => {
+    const stack = new HistoryStack()
+    stack.push({
+      cells: [[5, 5]], prevValues: [0], nextValues: [1],
+      tool: 'fill', timestamp: 1000,
+    })
+    const undone = stack.undo()
+    expect(undone!.cells).toEqual([[5, 5]])
+    const redone = stack.redo()
+    expect(redone!.cells).toEqual([[5, 5]])
+    expect(stack.canRedo).toBe(false)
+  })
+
+  it('caps at MAX_HISTORY', () => {
+    const stack = new HistoryStack()
+    // Use different tools to prevent merge, and timestamps far apart
+    const tools: Array<'brush' | 'fill' | 'rect' | 'line'> = ['brush', 'fill', 'rect', 'line']
+    for (let i = 0; i < 250; i++) {
+      stack.push({
+        cells: [[i, 0]], prevValues: [0], nextValues: [1],
+        tool: tools[i % 4], timestamp: i * 5000, // 5s apart, no merge
+      })
+    }
+    // 250 pushes, capped at 200. Undo pops the last (i=249).
+    const entry = stack.undo()
+    // Last entry's cell x should be 249
+    expect(entry!.cells[0][0]).toBe(249)
+  })
+
+  it('supports palette change round-trip undo/redo', () => {
+    const stack = new HistoryStack()
+    stack.push({
+      cells: [], prevValues: [], nextValues: [],
+      tool: 'brush', timestamp: 1000,
+      paletteChanges: [{ index: 2, oldRgb: [100,100,100] as [number,number,number], newRgb: [200,200,200] as [number,number,number] }],
+    })
+    const undone = stack.undo()
+    expect(undone!.paletteChanges).toBeDefined()
+    expect(undone!.paletteChanges![0].index).toBe(2)
+    expect(undone!.paletteChanges![0].oldRgb).toEqual([100, 100, 100])
+    expect(undone!.paletteChanges![0].newRgb).toEqual([200, 200, 200])
   })
 })

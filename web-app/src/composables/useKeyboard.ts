@@ -4,17 +4,9 @@
 
 import { onMounted, onUnmounted } from 'vue'
 import { useEditorStore } from '@/stores/editorStore'
-import type { ToolType } from '@/types'
+import { lookupShortcut } from '@/utils/toolRegistry'
 
-const toolShortcuts: Record<string, ToolType> = {
-  'b': 'brush',
-  'e': 'eraser',
-  'g': 'fill',
-  'i': 'eyedropper',
-  'r': 'rect',
-  'l': 'line',
-  'h': 'move',
-}
+const legacyShortcuts: Record<string, string> = {}
 
 export function useKeyboard() {
   const editor = useEditorStore()
@@ -49,9 +41,10 @@ export function useKeyboard() {
       return
     }
 
-    // 工具快捷键
-    if (toolShortcuts[key] && !e.ctrlKey && !e.metaKey) {
-      editor.setTool(toolShortcuts[key])
+    // 工具快捷键 (P3-2: 从工具注册表查找)
+    const tool = lookupShortcut(key)
+    if (tool && !e.ctrlKey && !e.metaKey) {
+      editor.setTool(tool)
       return
     }
 
@@ -67,6 +60,35 @@ export function useKeyboard() {
     if (key === 'g' && e.ctrlKey) {
       e.preventDefault()
       editor.showGrid = !editor.showGrid
+    }
+
+    // [ ] 调整画笔尺寸
+    if (key === '[') {
+      editor.brushSize = Math.max(1, editor.brushSize - 1) as 1 | 2 | 3 | 4
+    }
+    if (key === ']') {
+      editor.brushSize = Math.min(4, editor.brushSize + 1) as 1 | 2 | 3 | 4
+    }
+
+    // Ctrl+C: 复制选区
+    if ((e.ctrlKey || e.metaKey) && key === 'c' && editor.selection) {
+      e.preventDefault()
+      editor.copySelection()
+      return
+    }
+
+    // Ctrl+V: 粘贴选区 (在 hover 位置)
+    if ((e.ctrlKey || e.metaKey) && key === 'v' && editor.clipboard && editor.hoverCell) {
+      e.preventDefault()
+      editor.pasteSelection(editor.hoverCell.x, editor.hoverCell.y)
+      return
+    }
+
+    // Delete: 删除选区内容
+    if (key === 'delete' && editor.selection) {
+      e.preventDefault()
+      editor.deleteSelection()
+      return
     }
   }
 

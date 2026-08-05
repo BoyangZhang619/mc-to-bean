@@ -9,7 +9,7 @@
  * 导出: exportPatternPanelPng 渲染完整图纸面板 (标题 + 网格 + 行列号 + 图例)
  * 图例合并: groupByBeadCode 按豆号 code 合并多个 palette 条目 (对齐 Python group_by_bead)
  */
-import type { Pattern, PaletteEntry, ViewportState } from '@/types'
+import type { Pattern, PaletteEntry, ViewportState, SelectionRect } from '@/types'
 import { matchMardColor } from '@/utils/mard'
 
 const CELL_PX = 16
@@ -28,6 +28,7 @@ export interface RenderOptions {
   tool: string
   rectStart?: { x: number; y: number } | null
   lineStart?: { x: number; y: number } | null
+  selection?: SelectionRect | null
 }
 
 export interface OffscreenData {
@@ -379,12 +380,24 @@ export function paintOverlay(
   options: RenderOptions,
   dpr: number,
 ) {
-  const { hoverCell, tool, rectStart, lineStart } = options
+  const { hoverCell, tool, rectStart, lineStart, selection } = options
   const { offsetX, offsetY, zoom } = viewport
   const cellSize = CELL_PX * zoom
-  if (!hoverCell) return
   ctx.save()
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  // P2-2: 选区矩形 (虚线框) — 即使没有 hoverCell 也渲染
+  const sel = selection
+  if (sel && cellSize >= 2) {
+    const sx = Math.min(sel.x1, sel.x2)
+    const sy = Math.min(sel.y1, sel.y2)
+    const sw = Math.abs(sel.x2 - sel.x1) + 1
+    const sh = Math.abs(sel.y2 - sel.y1) + 1
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1.5
+    ctx.setLineDash([5, 3])
+    ctx.strokeRect(offsetX + sx * cellSize, offsetY + sy * cellSize, sw * cellSize, sh * cellSize)
+    ctx.setLineDash([])
+  }
+  if (!hoverCell) { ctx.restore(); return }
   if (cellSize >= 8) {
     const hx = offsetX + hoverCell.x * cellSize + cellSize / 2
     const hy = offsetY + hoverCell.y * cellSize + cellSize / 2
