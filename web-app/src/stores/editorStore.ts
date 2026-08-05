@@ -4,6 +4,7 @@ import type { Pattern, PaletteEntry, ToolType, ViewportState } from '@/types'
 import { HistoryStack } from '@/utils/history'
 import { floodFill } from '@/utils/floodFill'
 import * as db from '@/utils/db'
+import type { LegendStyle } from '@/utils/renderer'
 
 interface DirtyCell {
   x: number; y: number; oldValue: number; newValue: number; idx?: number
@@ -16,7 +17,9 @@ export const useEditorStore = defineStore('editor', () => {
   const currentTool = ref<ToolType>('brush')
   const currentColorIndex = ref(0)
   const showGrid = ref(true)
+  const showNumbers = ref(false)
   const backgroundColor = ref('#ffffff')
+  const legendStyle = ref<LegendStyle>('simple')
   const isDirty = ref(false)
   const isSaving = ref(false)
   const saveStatus = ref<'saved' | 'saving' | 'unsaved'>('saved')
@@ -472,7 +475,9 @@ export const useEditorStore = defineStore('editor', () => {
     currentTool,
     currentColorIndex,
     showGrid,
+    showNumbers,
     backgroundColor,
+    legendStyle,
     isDirty,
     isSaving,
     saveStatus,

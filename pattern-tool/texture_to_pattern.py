@@ -185,8 +185,9 @@ def main() -> int:
                             k for k in sorted(BG_PRESETS)))
     parser.add_argument("--palette", choices=list(BRANDS), default=None,
                         help="豆号色卡品牌 (默认不匹配)")
-    parser.add_argument("--legend-style", choices=["simple", "detail"], default="simple",
-                        help="图例样式: simple=序号+环+数量 (默认), detail=加豆号/HEX")
+    parser.add_argument("--legend-style", choices=["simple", "detail", "pure"], default="simple",
+                        help="图例样式: simple=[序号][圆角矩形豆色内嵌豆号][数量] (默认), "
+                             "detail=加 HEX, pure=只保留豆色块(无序号,格子显示豆色)")
     parser.add_argument("--no-grid", action="store_true", help="不画网格线")
     parser.add_argument("--no-legend", action="store_true", help="不画颜色图例")
     parser.add_argument("--no-numbers", action="store_true", help="不叠加颜色序号")

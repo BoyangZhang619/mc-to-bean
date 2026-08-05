@@ -114,6 +114,19 @@ def _draw_bead(draw: ImageDraw.ImageDraw, cx: int, cy: int, r: int,
     draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(165, 165, 170), width=1)
 
 
+def _draw_swatch(draw: ImageDraw.ImageDraw, x: int, y: int, w: int, h: int,
+                 color: Tuple[int, int, int], text: str, font_size: int):
+    """画一个圆角矩形豆色块, 豆号文字内嵌居中 (深色块白字, 浅色块黑字)。
+
+    图例样式: [序号徽章][圆角矩形豆色(内嵌豆号)][数量]
+    """
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=max(3, h // 4),
+                           fill=color, outline=(120, 120, 125), width=1)
+    t_color = (255, 255, 255) if luma(color) < 150 else (40, 40, 40)
+    draw.text((x + w / 2, y + h / 2), text, font=load_font(font_size),
+              fill=t_color, anchor="mm")
+
+
 # ---------------------------------------------------------------- 豆号分组
 
 @dataclass
@@ -281,25 +294,32 @@ def _prepare_panel_data(img: Image.Image, opts: RenderOptions) -> PanelData:
 
 def _calc_legend_meta(n_legend_entries: int, grid_h: int, scale: int,
                       legend_style: str) -> tuple:
-    """计算图例的列宽/字体等尺寸参数。返回 (col_metas, legend_w, col_gap)。"""
+    """计算图例的列宽/字体等尺寸参数。返回 (col_metas, legend_w, col_gap)。
+
+    图例项样式: [序号徽章][圆角矩形豆色(内嵌豆号)][数量]
+    pure 模式: 只保留 [圆角矩形豆色(内嵌豆号)], 无序号/无数量。
+    """
     ncols = math.ceil(n_legend_entries / LEGEND_MAX_ROWS)
     n_first = min(LEGEND_MAX_ROWS, n_legend_entries)
     item_h = grid_h / n_first
     f_b = max(10, round(item_h * 0.22))
     f_l = max(11, round(item_h * 0.24))
     bdg = round(item_h * 0.5)
-    r_d = round(item_h * 0.58)
-    if legend_style == "detail":
-        t_w = round(f_l * 7.0)
+    sw_w = round(f_l * 2.8) + 12          # 圆角矩形豆色块宽 (容纳 3-4 字符豆号)
+    if legend_style == "pure":
+        cw = sw_w + 16                    # 只有色块
     else:
-        t_w = round(f_l * 5.4)
-    cw = bdg + 6 + r_d + 6 + t_w + 10
+        if legend_style == "detail":
+            t_w = round(f_l * 6.2)        # "(×N) #RRGGBB"
+        else:
+            t_w = round(f_l * 3.4)        # "(×N)"
+        cw = bdg + 6 + sw_w + 6 + t_w + 10
     col_gap = round(scale * 0.45)
     col_metas = []
     legend_w = 0
     for col in range(ncols):
         n_items = min(LEGEND_MAX_ROWS, n_legend_entries - col * LEGEND_MAX_ROWS)
-        col_metas.append((n_items, item_h, f_b, f_l, bdg, r_d, cw))
+        col_metas.append((n_items, item_h, f_b, f_l, bdg, sw_w, cw))
         legend_w += cw
     legend_w += (ncols - 1) * col_gap + round(scale * 0.5)
     return col_metas, legend_w, col_gap
@@ -328,13 +348,13 @@ def build_legend_panel(pdata: PanelData, opts: RenderOptions) -> Image.Image:
     draw = ImageDraw.Draw(panel)
 
     cx = 6  # left padding inside legend panel
-    for col_i, (n_items, item_h, f_b, f_l, bdg, r_d, cw) in enumerate(col_metas):
+    for col_i, (n_items, item_h, f_b, f_l, bdg, sw_w, cw) in enumerate(col_metas):
         for row in range(n_items):
             idx = col_i * LEGEND_MAX_ROWS + row
             if idx >= len(pdata.legend_entries):
                 break
             _draw_one_legend_entry(
-                draw, pdata, opts, idx, row, item_h, f_b, f_l, bdg, r_d,
+                draw, pdata, opts, idx, row, item_h, f_b, f_l, bdg, sw_w,
                 cx=cx, cy0=pdata.gy + (row + 0.5) * item_h)
         cx += cw + col_gap
 
@@ -346,58 +366,66 @@ def _draw_one_legend_entry(
     pdata: PanelData,
     opts: RenderOptions,
     idx: int, row: int, item_h: int,
-    f_b: int, f_l: int, bdg: int, r_d: int,
+    f_b: int, f_l: int, bdg: int, sw_w: int,
     cx: int, cy0: int,
 ):
-    """绘制单条图例 (badge + ring + text), 供 build_panel 和 build_legend_panel 共用。"""
+    """绘制单条图例, 供 build_panel 和 build_legend_panel 共用。
+
+    样式: [序号徽章][圆角矩形豆色(内嵌豆号)][数量]
+    pure 模式: 只保留 [圆角矩形豆色(内嵌豆号)], 无序号/无数量。
+    """
     if pdata.is_grouped:
         g = pdata.legend_entries[idx]  # type: BeadGroup
-        # 序号徽章
         by = cy0 - bdg / 2
-        draw.rounded_rectangle(
-            [cx, by, cx + bdg, by + bdg],
-            radius=round(bdg * 0.28), fill=(235, 235, 238),
-            outline=(150, 150, 155), width=1)
-        draw.text((cx + bdg / 2, cy0), "%02d" % g.num,
-                  font=load_font(f_b), fill=TEXT_COLOR, anchor="mm")
-        # 环 = 豆号色 (g.bead.rgb 是色卡里该豆号的实际颜色, 不是原图代表色)
-        rx = cx + bdg + 6 + r_d / 2
-        _draw_bead(draw, rx, cy0, r_d // 2, g.bead.rgb, opts.bg)
-        # 文本
-        tx = rx + r_d / 2 + 6
-        # 警告标记用 ASCII "!" — ⚠️ 在部分字体/环境中无字形会显示为矩形方块
-        prefix = "!" if g.warn else ""
-        if opts.legend_style == "detail":
-            text = f"{prefix}{g.bead.code} {hex_of(g.rep_rgb)} (×{g.count})"
-        else:
-            text = f"{prefix}{g.bead.code} (×{g.count})"
-        draw.text((tx, cy0), text, font=load_font(f_l),
-                  fill=TEXT_COLOR, anchor="lm")
+        bx = cx
+        if opts.legend_style != "pure":
+            # 序号徽章
+            draw.rounded_rectangle(
+                [cx, by, cx + bdg, by + bdg],
+                radius=round(bdg * 0.28), fill=(235, 235, 238),
+                outline=(150, 150, 155), width=1)
+            draw.text((cx + bdg / 2, cy0), "%02d" % g.num,
+                      font=load_font(f_b), fill=TEXT_COLOR, anchor="mm")
+            bx = cx + bdg + 6
+        # 圆角矩形豆色块 (内嵌豆号), 色 = 豆号色
+        _draw_swatch(draw, bx, by, sw_w, bdg, g.bead.rgb, g.bead.code, f_l)
+        if opts.legend_style != "pure":
+            # 文本: 数量 (detail 加 HEX); 警告标记用 ASCII "!" (⚠️ 部分字体无字形)
+            tx = bx + sw_w + 6
+            prefix = "!" if g.warn else ""
+            if opts.legend_style == "detail":
+                text = f"{prefix}(×{g.count}) {hex_of(g.rep_rgb)}"
+            else:
+                text = f"{prefix}(×{g.count})"
+            draw.text((tx, cy0), text, font=load_font(f_l),
+                      fill=TEXT_COLOR, anchor="lm")
     else:
         rgb = pdata.legend_entries[idx]  # type: tuple
-        # 序号徽章
-        by = cy0 - bdg / 2
-        draw.rounded_rectangle(
-            [cx, by, cx + bdg, by + bdg],
-            radius=round(bdg * 0.28), fill=(235, 235, 238),
-            outline=(150, 150, 155), width=1)
-        draw.text((cx + bdg / 2, cy0), "%02d" % pdata.num_of[rgb],
-                  font=load_font(f_b), fill=TEXT_COLOR, anchor="mm")
-        # 对应颜色的环: 有豆号时用豆号色, 否则用原色
-        rx = cx + bdg + 6 + r_d / 2
         bead_c = opts.bead_map.get(rgb) if opts.palette else None
-        _draw_bead(draw, rx, cy0, r_d // 2, bead_c.rgb if bead_c else rgb, opts.bg)
-        # 文本
-        tx = rx + r_d / 2 + 6
-        cnt = pdata.pixel_counter[rgb]
-        if opts.legend_style == "detail":
-            text = (f"{bead_c.code} {hex_of(rgb)} (×{cnt})" if bead_c
-                    else f"{hex_of(rgb)} (×{cnt})")
-        else:
-            text = (f"{bead_c.code} (×{cnt})" if bead_c
-                    else f"(×{cnt})")
-        draw.text((tx, cy0), text, font=load_font(f_l),
-                  fill=TEXT_COLOR, anchor="lm")
+        swatch_color = bead_c.rgb if bead_c else rgb
+        # 色块内文字: 有豆号用豆号, 否则用 HEX
+        swatch_text = bead_c.code if bead_c else hex_of(rgb)
+        by = cy0 - bdg / 2
+        bx = cx
+        if opts.legend_style != "pure":
+            # 序号徽章
+            draw.rounded_rectangle(
+                [cx, by, cx + bdg, by + bdg],
+                radius=round(bdg * 0.28), fill=(235, 235, 238),
+                outline=(150, 150, 155), width=1)
+            draw.text((cx + bdg / 2, cy0), "%02d" % pdata.num_of[rgb],
+                      font=load_font(f_b), fill=TEXT_COLOR, anchor="mm")
+            bx = cx + bdg + 6
+        _draw_swatch(draw, bx, by, sw_w, bdg, swatch_color, swatch_text, f_l)
+        if opts.legend_style != "pure":
+            tx = bx + sw_w + 6
+            cnt = pdata.pixel_counter[rgb]
+            if opts.legend_style == "detail":
+                text = f"(×{cnt}) {hex_of(rgb)}"
+            else:
+                text = f"(×{cnt})"
+            draw.text((tx, cy0), text, font=load_font(f_l),
+                      fill=TEXT_COLOR, anchor="lm")
 
 
 # ---------------------------------------------------------------- 面板渲染
@@ -447,13 +475,15 @@ def build_panel(img: Image.Image, title: str, opts: RenderOptions,
     r_bead = scale // 2 - 1
 
     # ---- 网格像素填充
+    # pure 模式: 格子强制显示豆号色 (等同 color_mode=1)
+    pure = opts.legend_style == "pure"
     for y in range(h):
         for x in range(w):
             orig_rgb = img.getpixel((x, y))
-            # 显示色: 优先 _display_rgb_map, 其次 color_mode==1 豆色, 最后原色
+            # 显示色: 优先 _display_rgb_map, 其次 color_mode==1/pure 豆色, 最后原色
             if _display_rgb_map is not None:
                 fill_rgb = _display_rgb_map.get(orig_rgb, orig_rgb)
-            elif opts.color_mode == 1 and opts.palette and opts.bead_map:
+            elif (opts.color_mode == 1 or pure) and opts.palette and opts.bead_map:
                 bead_c = opts.bead_map.get(orig_rgb)
                 fill_rgb = bead_c.rgb if bead_c else orig_rgb
             else:
@@ -506,7 +536,7 @@ def build_panel(img: Image.Image, title: str, opts: RenderOptions,
                   font=f_num, fill=TEXT_COLOR, anchor="mm")
 
     # ---- 每颗豆上叠加半透明颜色序号
-    if opts.numbers and scale >= 12:
+    if opts.numbers and scale >= 12 and opts.legend_style != "pure":
         overlay = Image.new("RGBA", panel.size, (0, 0, 0, 0))
         od = ImageDraw.Draw(overlay)
         f_num_o = load_font(max(7, round(scale * (0.34 if bead else 0.40))))
@@ -537,13 +567,13 @@ def build_panel(img: Image.Image, title: str, opts: RenderOptions,
     if draw_legend:
         legend_x = gx + grid_w + round(scale * 0.5)
         cx = legend_x
-        for col_i, (n_items, item_h, f_b, f_l, bdg, r_d, cw) in enumerate(col_metas):
+        for col_i, (n_items, item_h, f_b, f_l, bdg, sw_w, cw) in enumerate(col_metas):
             for row in range(n_items):
                 idx = col_i * LEGEND_MAX_ROWS + row
                 if idx >= len(pdata.legend_entries):
                     break
                 _draw_one_legend_entry(
-                    draw, pdata, opts, idx, row, item_h, f_b, f_l, bdg, r_d,
+                    draw, pdata, opts, idx, row, item_h, f_b, f_l, bdg, sw_w,
                     cx=cx, cy0=gy + (row + 0.5) * item_h)
             cx += cw + col_gap
 

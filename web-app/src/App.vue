@@ -9,13 +9,13 @@ import { computed } from 'vue'
 
 const route = useRoute()
 
-const isEditor = computed(() => route.name === 'editor')
+const isFullScreen = computed(() => route.name === 'editor')
 </script>
 
 <template>
   <div class="app-layout">
     <!-- 编辑器模式下隐藏头部导航以腾出更多空间 -->
-    <AppHeader v-if="!isEditor" />
+    <AppHeader v-if="!isFullScreen" />
     <router-view v-slot="{ Component }">
       <Transition name="route" mode="out-in">
         <component :is="Component" />

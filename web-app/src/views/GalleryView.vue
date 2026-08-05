@@ -69,6 +69,10 @@ function openEditor(id: string) {
   router.push(`/editor/${id}`)
 }
 
+function openPreview(id: string) {
+  router.push(`/preview/${id}`)
+}
+
 function confirmDelete(p: Pattern) {
   deleteTarget.value = p
   showDeleteConfirm.value = true
@@ -217,16 +221,19 @@ function formatDate(ts: number): string {
             :key="pattern.id"
             class="gallery-card"
           >
-            <div class="card-thumb" @click="openEditor(pattern.id)">
+            <div class="card-thumb" @click="openPreview(pattern.id)">
               <img :src="getThumb(pattern)" :alt="pattern.name" />
             </div>
             <div class="card-body">
-              <div class="card-info" @click="openEditor(pattern.id)">
+              <div class="card-info" @click="openPreview(pattern.id)">
                 <span class="card-name">{{ pattern.name }}</span>
                 <span class="card-dims">{{ pattern.width }} x {{ pattern.height }} | {{ pattern.palette.length }} 色</span>
                 <span class="card-date">{{ formatDate(pattern.updatedAt) }}</span>
               </div>
               <div class="card-actions">
+                <button title="预览" @click="openPreview(pattern.id)">
+                  <Icon name="search" :size="15" />
+                </button>
                 <button title="编辑" @click="openEditor(pattern.id)">
                   <Icon name="brush" :size="15" />
                 </button>

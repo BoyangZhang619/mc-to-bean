@@ -42,6 +42,7 @@ function buildOffscreen() {
     showGrid: editor.showGrid,
     gridColor: 'rgba(0,0,0,0.12)',
     backgroundColor: editor.backgroundColor,
+    showNumbers: editor.showNumbers,
   })
 }
 
@@ -91,7 +92,7 @@ function render() {
 
 // 监听: 需要全量重建离屏的场景
 watch(
-  () => [editor.pattern?.id, editor.showGrid, editor.backgroundColor],
+  () => [editor.pattern?.id, editor.showGrid, editor.showNumbers, editor.backgroundColor],
   () => { buildOffscreen() },
 )
 
@@ -100,7 +101,7 @@ watch(
   () => editor.pattern?.palette,
   () => {
     if (offscreen.value && editor.pattern) {
-      rebuildOffscreenColors(offscreen.value, editor.pattern, editor.backgroundColor, editor.showGrid, 'rgba(0,0,0,0.12)')
+      rebuildOffscreenColors(offscreen.value, editor.pattern, editor.backgroundColor, editor.showGrid, 'rgba(0,0,0,0.12)', editor.showNumbers)
     }
   },
   { deep: true }

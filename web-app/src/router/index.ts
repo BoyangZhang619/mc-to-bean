@@ -23,6 +23,11 @@ const router = createRouter({
       name: 'import',
       component: () => import('@/views/ImportView.vue'),
     },
+    {
+      path: '/preview/:id',
+      name: 'preview',
+      component: () => import('@/views/PreviewView.vue'),
+    },
   ],
 })
 

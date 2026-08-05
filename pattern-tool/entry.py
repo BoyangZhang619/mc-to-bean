@@ -165,8 +165,13 @@ def main() -> int:
     numbers = ask_yes_no("每颗豆上叠加显示半透明颜色序号?", default=True)
     grid = ask_yes_no("画网格线? (环形豆子风格下自动关闭)", default=True)
     legend = ask_yes_no("右侧显示豆色图例?", default=True)
-    legend_detail = ask_yes_no("图例用详细版 (加豆号+HEX)? 否则为 [序号][环][数量] 简洁版",
-                               default=False)
+    legend_style_idx = ask_choice(
+        "图例样式:",
+        ["[序号][圆角矩形豆色内嵌豆号][数量] (默认)",
+         "详细版 (加 HEX)",
+         "纯豆色版 (无序号, 格子显示豆色)"],
+        default=1)
+    legend_style = {1: "simple", 2: "detail", 3: "pure"}[legend_style_idx]
     scale = ask_value("单格边长/每颗豆的像素大小", default=64)
     color_mode_idx = ask_choice(
         "网格颜色显示模式:",
@@ -179,7 +184,7 @@ def main() -> int:
     opts = RenderOptions(
         mode=mode, scale=scale, bg=bg,
         grid=grid, legend=legend,
-        legend_style="detail" if legend_detail else "simple",
+        legend_style=legend_style,
         numbers=numbers,
         palette=resolve_palette(palette),
         color_mode=color_mode,

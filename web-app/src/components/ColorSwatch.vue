@@ -263,8 +263,8 @@ function addMardColor(hex: string) {
 .current-color-preview {
   width: 44px;
   height: 44px;
-  border-radius: $radius-sm;
-  border: 2px solid $color-light;
+  border-radius: $radius-md;
+  border: 1px solid $color-mid-light;
   flex-shrink: 0;
 }
 
@@ -342,7 +342,7 @@ function addMardColor(hex: string) {
   width: 24px;
   height: 24px;
   border-radius: $radius-sm;
-  border: 1px solid $color-light;
+  border: 1px solid $color-mid-light;
   flex-shrink: 0;
 }
 

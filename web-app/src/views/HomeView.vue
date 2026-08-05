@@ -25,6 +25,10 @@ function openEditor(id: string) {
   router.push(`/editor/${id}`)
 }
 
+function openPreview(id: string) {
+  router.push(`/preview/${id}`)
+}
+
 function goImport() {
   router.push('/import')
 }
@@ -104,7 +108,7 @@ function getThumb(pattern: Pattern): string {
             v-for="pattern in store.recentPatterns"
             :key="pattern.id"
             class="recent-card"
-            @click="openEditor(pattern.id)"
+            @click="openPreview(pattern.id)"
           >
             <img
               :src="getThumb(pattern)"

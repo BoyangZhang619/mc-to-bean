@@ -11,7 +11,7 @@ import { useEditorStore } from '@/stores/editorStore'
 import { usePatternStore } from '@/stores/patternStore'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { exportContractJson } from '@/utils/contract'
-import { exportFullPng } from '@/utils/renderer'
+import { exportFullPng, exportPatternPanelPng, type LegendStyle } from '@/utils/renderer'
 import type { Pattern } from '@/types'
 import CanvasGrid from '@/components/CanvasGrid.vue'
 import Toolbar from '@/components/Toolbar.vue'
@@ -104,7 +104,29 @@ async function handleSave() {
   }
 }
 
-// 导出 PNG
+// 导出 PNG (带图例的完整面板)
+function handleExportPngPanel(style: LegendStyle) {
+  if (!editor.pattern) return
+  const dataUrl = exportPatternPanelPng(editor.pattern, {
+    cellSize: 16,
+    showGrid: editor.showGrid,
+    backgroundColor: editor.backgroundColor,
+    legendStyle: style,
+  })
+  fetch(dataUrl)
+    .then((r) => r.blob())
+    .then((blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${editor.pattern!.name}.png`
+      a.click()
+      URL.revokeObjectURL(url)
+      toastRef.value?.show('PNG 导出成功', 'success')
+    })
+}
+
+// 导出 PNG (仅网格, 无图例)
 function handleExportPng() {
   if (!editor.pattern) return
   const dataUrl = exportFullPng(editor.pattern, 16, editor.showGrid, editor.backgroundColor)
@@ -254,9 +276,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
             </button>
             <Transition name="fade-scale">
               <div v-if="showExportMenu" class="export-dropdown">
+                <div class="export-section-title">PNG (完整面板)</div>
+                <button @click="handleExportPngPanel('simple'); showExportMenu = false">
+                  <Icon name="export" :size="14" />
+                  <span>Simple -- 序号 + 色块 + 数量</span>
+                </button>
+                <button @click="handleExportPngPanel('detail'); showExportMenu = false">
+                  <Icon name="info" :size="14" />
+                  <span>Detail -- 序号 + 色块 + 数量 + HEX</span>
+                </button>
+                <button @click="handleExportPngPanel('pure'); showExportMenu = false">
+                  <Icon name="palette" :size="14" />
+                  <span>Pure -- 仅色块, 网格豆色</span>
+                </button>
+                <div class="export-divider" />
+                <div class="export-section-title">其他</div>
                 <button @click="handleExportPng(); showExportMenu = false">
                   <Icon name="gallery" :size="14" />
-                  <span>导出为 PNG</span>
+                  <span>导出为 PNG (仅网格)</span>
                 </button>
                 <button @click="handleExportJson(); showExportMenu = false">
                   <Icon name="save" :size="14" />
@@ -550,7 +587,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
   box-shadow: $shadow-md;
   padding: 4px;
   z-index: 100;
-  min-width: 150px;
+  min-width: 220px;
 
   button {
     display: flex;
@@ -568,6 +605,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
       color: $color-black;
     }
   }
+}
+
+.export-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: $color-mid;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 12px 2px;
+}
+
+.export-divider {
+  height: 1px;
+  background: $color-light;
+  margin: 4px 8px;
 }
 
 // ==================== 主编辑区域 ====================

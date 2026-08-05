@@ -1,10 +1,144 @@
 /**
- * 契约 JSON 解析和 flood fill 单元测试
+ * 契约 JSON 解析、flood fill、渲染器工具函数 单元测试
  */
 
 import { describe, it, expect } from 'vitest'
 import { parseContractJson, exportContractJson } from '@/utils/contract'
 import { floodFill } from '@/utils/floodFill'
+import { luma, exportPatternPanelPng, exportFullPng } from '@/utils/renderer'
+import type { Pattern } from '@/types'
+
+// ---- renderer 工具函数 ----
+
+describe('renderer luma', () => {
+  it('computes luminance correctly', () => {
+    expect(luma(0, 0, 0)).toBe(0)
+    expect(luma(255, 255, 255)).toBe(255)
+    expect(luma(255, 0, 0)).toBeCloseTo(76.245, 1)
+    expect(luma(0, 255, 0)).toBeCloseTo(149.685, 1)
+    expect(luma(0, 0, 255)).toBeCloseTo(29.07, 1)
+  })
+
+  it('returns luminance threshold 150 for text color decisions', () => {
+    // 深色 < 150 -> 白字
+    expect(luma(50, 50, 50)).toBeLessThan(150)
+    // 浅色 > 150 -> 黑字
+    expect(luma(200, 200, 200)).toBeGreaterThan(150)
+  })
+})
+
+describe('exportFullPng', () => {
+  const samplePattern: Pattern = {
+    id: 'test-id',
+    name: 'test',
+    width: 2,
+    height: 2,
+    cellSizeMm: 5,
+    palette: [
+      { index: 0, rgb: [255, 255, 255], code: 'W01', beadRgb: [250, 250, 250] },
+      { index: 1, rgb: [0, 0, 0], code: 'B01', beadRgb: [10, 10, 10] },
+    ],
+    grid: [
+      [0, 1],
+      [1, 0],
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+
+  // vitest node 环境没有 DOM api, 需要 mock
+  function withDomMock(fn: () => void) {
+    const origDocument = (globalThis as any).document
+    const origWindow = (globalThis as any).window
+    const mockCtx = {
+      setTransform: () => {},
+      imageSmoothingEnabled: false,
+      fillStyle: '',
+      fill: () => {},
+      fillRect: () => {},
+      strokeStyle: '',
+      lineWidth: 0,
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      stroke: () => {},
+      strokeRect: () => {},
+      fillText: () => {},
+      font: '',
+      textAlign: '' as CanvasTextAlign,
+      textBaseline: '' as CanvasTextBaseline,
+      save: () => {},
+      restore: () => {},
+      roundRect: () => {},
+      shadowColor: '',
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+    }
+    const mockCanvas = {
+      getContext: () => mockCtx,
+      toDataURL: () => 'data:image/png;base64,FAKE',
+      width: 0,
+      height: 0,
+      style: {},
+    }
+    ;(globalThis as any).document = { createElement: () => mockCanvas }
+    ;(globalThis as any).window = { devicePixelRatio: 1 }
+    try {
+      fn()
+    } finally {
+      if (origDocument !== undefined) (globalThis as any).document = origDocument
+      else delete (globalThis as any).document
+      if (origWindow !== undefined) (globalThis as any).window = origWindow
+      else delete (globalThis as any).window
+    }
+  }
+
+  it('returns a valid data URL for simple grid export', () => {
+    withDomMock(() => {
+      const dataUrl = exportFullPng(samplePattern)
+      expect(dataUrl).toMatch(/^data:image\/png;base64,/)
+    })
+  })
+
+  it('returns a valid data URL for panel export (simple)', () => {
+    withDomMock(() => {
+      const dataUrl = exportPatternPanelPng(samplePattern, {
+        cellSize: 16,
+        showGrid: true,
+        backgroundColor: '#ffffff',
+        legendStyle: 'simple',
+      })
+      expect(dataUrl).toMatch(/^data:image\/png;base64,/)
+    })
+  })
+
+  it('returns a valid data URL for panel export (detail)', () => {
+    withDomMock(() => {
+      const dataUrl = exportPatternPanelPng(samplePattern, {
+        cellSize: 16,
+        showGrid: true,
+        backgroundColor: '#ffffff',
+        legendStyle: 'detail',
+      })
+      expect(dataUrl).toMatch(/^data:image\/png;base64,/)
+    })
+  })
+
+  it('returns a valid data URL for panel export (pure)', () => {
+    withDomMock(() => {
+      const dataUrl = exportPatternPanelPng(samplePattern, {
+        cellSize: 16,
+        showGrid: true,
+        backgroundColor: '#ffffff',
+        legendStyle: 'pure',
+      })
+      expect(dataUrl).toMatch(/^data:image\/png;base64,/)
+    })
+  })
+})
+
+// ---- contract JSON ----
 
 describe('contract JSON parser', () => {
   const validJson = JSON.stringify({

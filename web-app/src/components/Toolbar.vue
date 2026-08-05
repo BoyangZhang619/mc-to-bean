@@ -108,6 +108,15 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
         <Icon name="grid" :size="20" />
         <span class="tool-label">网格</span>
       </button>
+      <button
+        class="tool-btn"
+        :class="{ active: editor.showNumbers }"
+        title="显示颜色序号"
+        @click="editor.showNumbers = !editor.showNumbers"
+      >
+        <Icon name="info" :size="20" />
+        <span class="tool-label">序号</span>
+      </button>
     </div>
 
     <!-- 背景色 -->
