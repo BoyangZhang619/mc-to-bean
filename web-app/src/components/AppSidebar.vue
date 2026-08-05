@@ -66,7 +66,7 @@ $sidebar-width: 200px;
 
 .app-sidebar {
   width: $sidebar-width;
-  height: 100vh;
+  height: 100dvh;
   background: $color-white;
   border-right: 1px solid $color-light;
   display: flex;

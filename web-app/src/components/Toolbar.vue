@@ -23,6 +23,15 @@ const toolDefs: { type: ToolType; icon: IconName; label: string; shortcut: strin
   { type: 'move', icon: 'move', label: '平移', shortcut: 'H' },
 ]
 
+// 移动端仅显示核心工具 (紧凑模式)
+const coreToolTypes = new Set<ToolType>(['brush', 'eraser', 'fill', 'eyedropper', 'rect', 'line', 'move'])
+
+const props = defineProps<{ compact?: boolean }>()
+
+const displayTools = computed(() =>
+  props.compact ? toolDefs.filter(t => coreToolTypes.has(t.type)) : toolDefs
+)
+
 const brushSizes: { size: 1 | 2 | 3 | 4; label: string }[] = [
   { size: 1, label: '1' },
   { size: 2, label: '2' },
@@ -44,7 +53,7 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
     <!-- 工具按钮组 -->
     <div class="tool-group">
       <button
-        v-for="t in toolDefs"
+        v-for="t in displayTools"
         :key="t.type"
         class="tool-btn"
         :class="{ active: editor.currentTool === t.type }"
@@ -57,20 +66,15 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
       </button>
     </div>
 
-    <div class="tool-divider" />
+    <div class="tool-divider" v-if="!compact" />
 
-    <!-- 画笔尺寸 (仅 brush/eraser/line 时显示) -->
-    <div class="tool-group" v-if="editor.currentTool === 'brush' || editor.currentTool === 'eraser' || editor.currentTool === 'line'">
+    <!-- 画笔尺寸 (非紧凑模式) -->
+    <div class="tool-group" v-if="!compact && (editor.currentTool === 'brush' || editor.currentTool === 'eraser' || editor.currentTool === 'line')">
       <span class="group-label">尺寸</span>
       <div class="brush-size-row">
-        <button
-          v-for="bs in brushSizes"
-          :key="bs.size"
-          class="brush-size-btn"
+        <button v-for="bs in brushSizes" :key="bs.size" class="brush-size-btn"
           :class="{ active: editor.brushSize === bs.size }"
-          @click="editor.brushSize = bs.size"
-          :title="`${bs.size}x${bs.size}`"
-        >
+          @click="editor.brushSize = bs.size" :title="`${bs.size}x${bs.size}`">
           <svg width="10" height="10" viewBox="0 0 10 10">
             <rect :x="5 - Math.floor(bs.size / 2)" :y="5 - Math.floor(bs.size / 2)"
               :width="bs.size" :height="bs.size" fill="currentColor" />
@@ -79,62 +83,36 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
       </div>
     </div>
 
-    <!-- 颜色替换状态 -->
-    <div class="tool-group" v-if="editor.currentTool === 'replace'">
+    <!-- 颜色替换状态 (非紧凑模式) -->
+    <div class="tool-group" v-if="!compact && editor.currentTool === 'replace'">
       <span class="replace-status">
-        <template v-if="editor.replaceSourceIndex !== null">
-          源色已选<br/>点击色板选目标色
-          <span class="replace-cancel" @click="editor.cancelReplace()">取消</span>
-        </template>
-        <template v-else>
-          点击画布<br/>选择要替换的颜色
-        </template>
+        <template v-if="editor.replaceSourceIndex !== null">源色已选<br/>点击色板选目标色<span class="replace-cancel" @click="editor.cancelReplace()">取消</span></template>
+        <template v-else>点击画布<br/>选择要替换的颜色</template>
       </span>
     </div>
 
-    <div class="tool-divider" />
+    <div class="tool-divider" v-if="!compact" />
 
     <!-- 撤销/重做 -->
     <div class="tool-group">
-      <button
-        class="tool-btn"
-        :class="{ disabled: !editor.canUndo }"
-        title="撤销 (Ctrl+Z)"
-        @click="editor.undo()"
-        :disabled="!editor.canUndo"
-      >
-        <Icon name="undo" :size="20" />
-        <span class="tool-label">撤销</span>
+      <button class="tool-btn" :class="{ disabled: !editor.canUndo }" title="撤销 (Ctrl+Z)" @click="editor.undo()" :disabled="!editor.canUndo">
+        <Icon name="undo" :size="20" /><span class="tool-label">撤销</span>
       </button>
-      <button
-        class="tool-btn"
-        :class="{ disabled: !editor.canRedo }"
-        title="重做 (Ctrl+Shift+Z)"
-        @click="editor.redo()"
-        :disabled="!editor.canRedo"
-      >
-        <Icon name="redo" :size="20" />
-        <span class="tool-label">重做</span>
+      <button class="tool-btn" :class="{ disabled: !editor.canRedo }" title="重做 (Ctrl+Shift+Z)" @click="editor.redo()" :disabled="!editor.canRedo">
+        <Icon name="redo" :size="20" /><span class="tool-label">重做</span>
       </button>
     </div>
 
+    <template v-if="!compact">
     <div class="tool-divider" />
 
     <!-- 视图控制 -->
     <div class="tool-group">
-      <button
-        class="tool-btn"
-        title="缩小"
-        @click="editor.setViewport({ zoom: Math.max(0.1, editor.viewport.zoom / 1.2) })"
-      >
+      <button class="tool-btn" title="缩小" @click="editor.setViewport({ zoom: Math.max(0.1, editor.viewport.zoom / 1.2) })">
         <Icon name="zoom-out" :size="20" />
       </button>
       <span class="zoom-display">{{ zoomPercent }}%</span>
-      <button
-        class="tool-btn"
-        title="放大"
-        @click="editor.setViewport({ zoom: Math.min(20, editor.viewport.zoom * 1.2) })"
-      >
+      <button class="tool-btn" title="放大" @click="editor.setViewport({ zoom: Math.min(20, editor.viewport.zoom * 1.2) })">
         <Icon name="zoom-in" :size="20" />
       </button>
     </div>
@@ -143,23 +121,13 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
 
     <!-- 网格开关 -->
     <div class="tool-group">
-      <button
-        class="tool-btn"
-        :class="{ active: editor.showGrid }"
-        title="网格线开关 (Ctrl+G)"
-        @click="editor.showGrid = !editor.showGrid"
-      >
-        <Icon name="grid" :size="20" />
-        <span class="tool-label">网格</span>
+      <button class="tool-btn" :class="{ active: editor.showGrid }" title="网格线开关 (Ctrl+G)" @click="editor.showGrid = !editor.showGrid">
+        <Icon name="grid" :size="20" /><span class="tool-label">网格</span>
       </button>
-      <button
-        class="tool-btn"
-        :class="{ active: editor.gridLabelMode !== 'none' }"
+      <button class="tool-btn" :class="{ active: editor.gridLabelMode !== 'none' }"
         :title="`网格标注: ${editor.gridLabelMode === 'none' ? '关闭' : editor.gridLabelMode === 'serial' ? '序列号' : '豆号'}`"
-        @click="editor.gridLabelMode = editor.gridLabelMode === 'none' ? 'serial' : editor.gridLabelMode === 'serial' ? 'code' : 'none'"
-      >
-        <Icon name="info" :size="20" />
-        <span class="tool-label">{{ editor.gridLabelMode === 'none' ? '标注' : editor.gridLabelMode === 'serial' ? '序号' : '豆号' }}</span>
+        @click="editor.gridLabelMode = editor.gridLabelMode === 'none' ? 'serial' : editor.gridLabelMode === 'serial' ? 'code' : 'none'">
+        <Icon name="info" :size="20" /><span class="tool-label">{{ editor.gridLabelMode === 'none' ? '标注' : editor.gridLabelMode === 'serial' ? '序号' : '豆号' }}</span>
       </button>
     </div>
 
@@ -167,17 +135,12 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
     <div class="tool-group bg-group">
       <span class="group-label">背景</span>
       <div class="bg-swatches">
-        <button
-          v-for="bg in bgColors"
-          :key="bg"
-          class="bg-swatch"
-          :class="{ active: editor.backgroundColor === bg }"
-          :style="{ background: bg }"
-          :title="bg"
-          @click="editor.backgroundColor = bg"
-        />
+        <button v-for="bg in bgColors" :key="bg" class="bg-swatch"
+          :class="{ active: editor.backgroundColor === bg }" :style="{ background: bg }" :title="bg"
+          @click="editor.backgroundColor = bg" />
       </div>
     </div>
+    </template>
   </div>
 </template>
 

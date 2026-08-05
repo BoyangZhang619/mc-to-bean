@@ -228,15 +228,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
 <template>
   <div class="editor-view">
-    <!-- 加载态 -->
     <div v-if="loading" class="editor-loading">
       <div class="loading-spinner" />
       <span>加载图纸中...</span>
     </div>
 
     <template v-else-if="editor.pattern">
-      <!-- 顶部状态栏 (PC) -->
-      <div class="editor-topbar desktop-only">
+      <!-- 顶部状态栏 (PC + 移动端共用) -->
+      <div class="editor-topbar">
         <div class="topbar-left">
           <button class="back-btn" @click="goBack" title="返回图纸库">
             <Icon name="arrow-left" :size="18" />
@@ -252,35 +251,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
             </span>
           </div>
         </div>
-        <div class="topbar-right">
-          <!-- 保存状态 -->
+        <div class="topbar-right desktop-only">
           <span class="save-status" :class="`status--${editor.saveStatus}`">
             {{ saveStatusText }}
           </span>
-
-          <!-- 保存按钮 -->
           <button class="topbar-btn" @click="handleSave" title="保存 (Ctrl+S)">
             <Icon name="save" :size="16" />
             <span>保存</span>
           </button>
-
-          <!-- 另存为 -->
           <button class="topbar-btn" @click="handleSaveAsNew" title="另存为新图纸">
             <Icon name="plus" :size="16" />
             <span>另存为</span>
           </button>
-
-          <!-- 1:1 适应 -->
           <button class="topbar-btn" @click="zoomToFit" title="适应窗口">
             <Icon name="expand" :size="16" />
           </button>
-
-          <!-- 尺寸 -->
           <button class="topbar-btn" @click="openResizeDialog" title="调整尺寸">
             <Icon name="resize" :size="16" />
           </button>
-
-          <!-- 导出菜单 -->
           <div class="export-menu-wrapper">
             <button class="topbar-btn" @click="showExportMenu = !showExportMenu" title="导出">
               <Icon name="export" :size="16" />
@@ -290,26 +278,56 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
               <div v-if="showExportMenu" class="export-dropdown">
                 <div class="export-section-title">PNG (完整面板)</div>
                 <button @click="handleExportPngPanel('simple'); showExportMenu = false">
-                  <Icon name="export" :size="14" />
-                  <span>Simple -- 序号 + 色块 + 数量</span>
+                  <Icon name="export" :size="14" /><span>Simple</span>
                 </button>
                 <button @click="handleExportPngPanel('detail'); showExportMenu = false">
-                  <Icon name="info" :size="14" />
-                  <span>Detail -- 序号 + 色块 + 数量 + HEX</span>
+                  <Icon name="info" :size="14" /><span>Detail</span>
                 </button>
                 <button @click="handleExportPngPanel('pure'); showExportMenu = false">
-                  <Icon name="palette" :size="14" />
-                  <span>Pure -- 仅色块, 网格豆色</span>
+                  <Icon name="palette" :size="14" /><span>Pure</span>
                 </button>
                 <div class="export-divider" />
-                <div class="export-section-title">其他</div>
                 <button @click="handleExportPng(); showExportMenu = false">
-                  <Icon name="gallery" :size="14" />
-                  <span>导出为 PNG (仅网格)</span>
+                  <Icon name="gallery" :size="14" /><span>导出 PNG</span>
                 </button>
                 <button @click="handleExportJson(); showExportMenu = false">
-                  <Icon name="save" :size="14" />
-                  <span>导出为 JSON</span>
+                  <Icon name="save" :size="14" /><span>导出 JSON</span>
+                </button>
+              </div>
+            </Transition>
+          </div>
+        </div>
+        <!-- 移动端: 色板 + 更多菜单 -->
+        <div class="topbar-right mobile-only">
+          <button class="topbar-btn" @click="handleSave" title="保存">
+            <Icon name="save" :size="16" />
+          </button>
+          <button class="topbar-btn" :class="{ active: paletteDrawerOpen }" @click="paletteDrawerOpen = !paletteDrawerOpen" title="色板">
+            <Icon name="palette" :size="16" />
+          </button>
+          <div class="export-menu-wrapper">
+            <button class="topbar-btn" @click="showExportMenu = !showExportMenu" title="更多">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+            <Transition name="fade-scale">
+              <div v-if="showExportMenu" class="export-dropdown mobile-more-menu">
+                <button @click="handleSaveAsNew(); showExportMenu = false">
+                  <Icon name="plus" :size="14" /><span>另存为</span>
+                </button>
+                <button @click="zoomToFit(); showExportMenu = false">
+                  <Icon name="expand" :size="14" /><span>适应窗口</span>
+                </button>
+                <button @click="openResizeDialog(); showExportMenu = false">
+                  <Icon name="resize" :size="14" /><span>调整尺寸</span>
+                </button>
+                <div class="export-divider" />
+                <button @click="handleExportPngPanel('simple'); showExportMenu = false">
+                  <Icon name="export" :size="14" /><span>导出 PNG</span>
+                </button>
+                <button @click="handleExportJson(); showExportMenu = false">
+                  <Icon name="save" :size="14" /><span>导出 JSON</span>
                 </button>
               </div>
             </Transition>
@@ -319,53 +337,34 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
       <!-- 主编辑区域 -->
       <div class="editor-main">
-        <!-- PC 左侧工具栏 -->
         <Toolbar class="desktop-toolbar" />
-
-        <!-- 中央画布 -->
         <CanvasGrid ref="canvasRef" />
-
-        <!-- PC 右侧色板 -->
         <ColorSwatch class="desktop-palette" />
+      </div>
 
-        <!-- 移动端: 色板抽屉 -->
-        <Transition name="slide-up">
-          <div v-if="paletteDrawerOpen" class="mobile-palette-drawer">
-            <div class="drawer-handle" @click="paletteDrawerOpen = false">
-              <div class="handle-bar" />
-            </div>
-            <ColorSwatch />
+      <!-- 移动端: 底部核心工具栏 (紧凑模式) -->
+      <div class="mobile-bottom-bar mobile-only">
+        <Toolbar compact />
+      </div>
+
+      <!-- 移动端: 色板右侧面板 -->
+      <Teleport to="body">
+        <Transition name="palette-slide">
+          <div v-if="paletteDrawerOpen" class="palette-overlay" @click.self="paletteDrawerOpen = false">
+            <aside class="palette-panel" @click.stop>
+              <div class="palette-panel-header">
+                <span>色板</span>
+                <button @click="paletteDrawerOpen = false">
+                  <Icon name="close" :size="18" />
+                </button>
+              </div>
+              <div class="palette-panel-body">
+                <ColorSwatch />
+              </div>
+            </aside>
           </div>
         </Transition>
-      </div>
-
-      <!-- 移动端: 底部工具栏 -->
-      <div class="mobile-bottom-bar mobile-only">
-        <div class="mobile-bar-row">
-          <Toolbar />
-        </div>
-        <div class="mobile-bar-actions">
-          <button class="mobile-action-btn" @click="handleSave">
-            <Icon name="save" :size="18" />
-          </button>
-          <button class="mobile-action-btn" @click="editor.undo()" :disabled="!editor.canUndo">
-            <Icon name="undo" :size="18" />
-          </button>
-          <button class="mobile-action-btn" @click="editor.redo()" :disabled="!editor.canRedo">
-            <Icon name="redo" :size="18" />
-          </button>
-          <button
-            class="mobile-action-btn"
-            :class="{ active: paletteDrawerOpen }"
-            @click="paletteDrawerOpen = !paletteDrawerOpen"
-          >
-            <Icon name="palette" :size="18" />
-          </button>
-          <button class="mobile-action-btn" @click="openResizeDialog">
-            <Icon name="resize" :size="18" />
-          </button>
-        </div>
-      </div>
+      </Teleport>
     </template>
 
     <!-- 另存为新图纸弹窗 -->
@@ -465,7 +464,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
 <style scoped lang="scss">
 .editor-view {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -663,75 +662,76 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
   flex-shrink: 0;
   background: $color-white;
   border-top: 1px solid $color-light;
+  overflow-x: auto;
+  display: flex;
 
-  .mobile-bar-row {
-    overflow-x: auto;
-    display: flex;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  .mobile-bar-actions {
-    display: flex;
-    justify-content: space-around;
-    padding: 4px 8px 8px;
-    border-top: 1px solid $color-bg;
-  }
+  &::-webkit-scrollbar { display: none; }
 }
 
-.mobile-action-btn {
-  width: 40px;
-  height: 40px;
-  @include flex-center;
-  border-radius: $radius-sm;
-  color: $color-mid-dark;
-  transition: all $transition-fast;
-
-  &:hover {
-    background: $color-bg;
-  }
-
-  &.active {
-    background: $color-black;
-    color: $color-white;
-  }
-
-  &:disabled {
-    opacity: 0.3;
-    pointer-events: none;
-  }
-}
-
-// 移动端色板抽屉
-.mobile-palette-drawer {
+// ==================== 移动端色板右侧面板 ====================
+.palette-overlay {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 50vh;
+  inset: 0;
+  background: $color-overlay;
+  z-index: $z-modal;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.palette-panel {
+  width: 280px;
+  max-width: 85vw;
+  height: 100%;
   background: $color-white;
-  border-top: 1px solid $color-light;
-  border-radius: $radius-lg $radius-lg 0 0;
-  box-shadow: $shadow-lg;
-  z-index: $z-palette;
   display: flex;
   flex-direction: column;
+  box-shadow: $shadow-lg;
   overflow: hidden;
 }
 
-.drawer-handle {
-  @include flex-center;
-  padding: 10px;
-  cursor: pointer;
+.palette-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid $color-light;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+
+  button {
+    width: 36px; height: 36px;
+    @include flex-center;
+    border-radius: $radius-sm;
+    color: $color-mid-dark;
+    &:hover { background: $color-bg; }
+  }
 }
 
-.handle-bar {
-  width: 36px;
-  height: 4px;
-  background: $color-light;
-  border-radius: 2px;
+.palette-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  @include scrollbar-thin;
+}
+
+.palette-slide-enter-active {
+  animation: paletteSlideIn 0.25s ease;
+  .palette-panel { animation: slideInRight 0.25s ease; }
+}
+.palette-slide-leave-active {
+  animation: paletteSlideIn 0.2s ease reverse;
+  .palette-panel { animation: slideInRight 0.2s ease reverse; }
+}
+
+@keyframes paletteSlideIn {
+  from { background: transparent; }
+  to { background: $color-overlay; }
+}
+
+// ==================== 移动端更多菜单 ====================
+.mobile-more-menu {
+  right: 0;
+  min-width: 170px !important;
 }
 
 // ==================== Resize 弹窗 ====================

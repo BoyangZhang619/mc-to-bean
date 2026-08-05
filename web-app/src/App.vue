@@ -53,7 +53,7 @@ const isFullScreen = computed(() => route.name === 'editor')
 <style scoped lang="scss">
 .app-layout {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   overflow: hidden;
 

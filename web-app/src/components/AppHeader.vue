@@ -71,7 +71,7 @@ function navigate(to: string) {
   </header>
 
   <!-- 移动端下拉菜单 -->
-  <Transition name="slide-down">
+  <Transition name="menu-drop">
     <nav v-if="mobileMenuOpen" class="mobile-nav">
       <button
         v-for="item in navItems"
@@ -204,11 +204,16 @@ function navigate(to: string) {
   }
 }
 
-.slide-down-enter-active {
-  animation: slideInUp 0.2s ease;
+.menu-drop-enter-active {
+  animation: menuDropIn 0.2s ease;
 }
 
-.slide-down-leave-active {
-  animation: slideInUp 0.15s ease reverse;
+.menu-drop-leave-active {
+  animation: menuDropIn 0.15s ease reverse;
+}
+
+@keyframes menuDropIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
