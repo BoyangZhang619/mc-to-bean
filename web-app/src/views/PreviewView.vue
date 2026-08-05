@@ -9,6 +9,7 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePatternStore } from '@/stores/patternStore'
 import type { Pattern } from '@/types'
+import { groupByBeadCode } from '@/utils/renderer'
 import Icon from '@/components/Icon.vue'
 
 const route = useRoute()
@@ -34,27 +35,21 @@ const barAnimReady = ref(false)
 
 const BASE_CELL = 16
 
-// ---- 颜色统计 (按使用量降序) ----
+// ---- 颜色统计 (按豆号合并分组, 对齐图例合并) ----
 const colorStats = computed(() => {
-  if (!pattern.value) return [] as Array<{ index: number; rgb: [number, number, number]; code?: string | null; name?: string | null; count: number; percentage: number }>
-  const counts = new Map<number, number>()
-  for (const row of pattern.value.grid) {
-    for (const idx of row) {
-      counts.set(idx, (counts.get(idx) ?? 0) + 1)
-    }
-  }
+  if (!pattern.value) return [] as Array<{ code: string | null; swatchColor: [number, number, number]; name: string | null; count: number; percentage: number; serial: number }>
   const total = pattern.value.width * pattern.value.height
-  return pattern.value.palette
-    .map((p) => ({
-      index: p.index,
-      rgb: p.rgb,
-      code: p.code,
-      name: p.name,
-      count: counts.get(p.index) ?? 0,
-      percentage: total > 0 ? ((counts.get(p.index) ?? 0) / total) * 100 : 0,
+  const groups = groupByBeadCode(pattern.value.palette, pattern.value.grid)
+  return groups
+    .filter((g) => g.count > 0)
+    .map((g) => ({
+      code: g.code,
+      swatchColor: g.swatchColor,
+      name: g.name,
+      count: g.count,
+      percentage: total > 0 ? (g.count / total) * 100 : 0,
+      serial: g.serial,
     }))
-    .filter((p) => p.count > 0)
-    .sort((a, b) => b.count - a.count)
 })
 
 // 条形图最大值
@@ -371,25 +366,25 @@ onUnmounted(() => {
             <div class="bar-chart">
               <div
                 v-for="(item, i) in colorStats"
-                :key="item.index"
+                :key="item.serial"
                 class="bar-row"
                 :style="{ transitionDelay: barAnimReady ? `${i * 40}ms` : '0ms' }"
               >
                 <div
                   class="bar-swatch"
-                  :style="{ background: `rgb(${item.rgb.join(',')})` }"
+                  :style="{ background: `rgb(${item.swatchColor.join(',')})` }"
                 />
                 <div class="bar-info">
                   <span class="bar-code" v-if="item.code">{{ item.code }}</span>
-                  <span class="bar-name" v-else>#{{ item.index }}</span>
-                  <span class="bar-rgb">RGB({{ item.rgb.join(',') }})</span>
+                  <span class="bar-name" v-else>#{{ item.serial }}</span>
+                  <span class="bar-rgb">RGB({{ item.swatchColor.join(',') }})</span>
                 </div>
                 <div class="bar-track">
                   <div
                     class="bar-fill"
                     :style="{
                       width: barWidth(item.count),
-                      background: `rgb(${item.rgb.join(',')})`,
+                      background: `rgb(${item.swatchColor.join(',')})`,
                     }"
                   />
                 </div>
@@ -480,25 +475,25 @@ onUnmounted(() => {
             <div class="bar-chart">
               <div
                 v-for="(item, i) in colorStats"
-                :key="item.index"
+                :key="'m' + item.serial"
                 class="bar-row"
                 :style="{ transitionDelay: barAnimReady ? `${i * 40}ms` : '0ms' }"
               >
                 <div
                   class="bar-swatch"
-                  :style="{ background: `rgb(${item.rgb.join(',')})` }"
+                  :style="{ background: `rgb(${item.swatchColor.join(',')})` }"
                 />
                 <div class="bar-info">
                   <span class="bar-code" v-if="item.code">{{ item.code }}</span>
-                  <span class="bar-name" v-else>#{{ item.index }}</span>
-                  <span class="bar-rgb">RGB({{ item.rgb.join(',') }})</span>
+                  <span class="bar-name" v-else>#{{ item.serial }}</span>
+                  <span class="bar-rgb">RGB({{ item.swatchColor.join(',') }})</span>
                 </div>
                 <div class="bar-track">
                   <div
                     class="bar-fill"
                     :style="{
                       width: barWidth(item.count),
-                      background: `rgb(${item.rgb.join(',')})`,
+                      background: `rgb(${item.swatchColor.join(',')})`,
                     }"
                   />
                 </div>
@@ -542,7 +537,7 @@ onUnmounted(() => {
 // 页面级
 // ==============================
 .preview-view {
-  height: calc(100vh - $header-height);
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;

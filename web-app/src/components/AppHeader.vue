@@ -19,6 +19,8 @@ watch(() => route.path, () => {
 const navItems = [
   { to: '/', label: '首页', icon: 'home' as const },
   { to: '/gallery', label: '图纸库', icon: 'gallery' as const },
+  { to: '/official', label: '官方图纸', icon: 'palette' as const },
+  { to: '/tools/fonts', label: '字体生成', icon: 'rename' as const },
   { to: '/import', label: '导入', icon: 'import' as const },
 ]
 

@@ -2,10 +2,11 @@
 /**
  * 导入页面 -- JSON 导入 + 图片导入 (tab 切换)
  */
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatternStore } from '@/stores/patternStore'
 import { parseContractJson } from '@/utils/contract'
+import { matchMardColor } from '@/utils/mard'
 import Icon from '@/components/Icon.vue'
 import Toast from '@/components/Toast.vue'
 import type { Pattern } from '@/types'
@@ -78,6 +79,8 @@ const imageLongEdge = ref(64)
 const imagePreviewUrl = ref<string | null>(null)
 const imagePreviewCanvas = ref<HTMLCanvasElement | null>(null)
 const imageProcessing = ref(false)
+// 已加载的原始 Image (用于 slider 变化时重新绘制预览)
+const loadedImage = ref<HTMLImageElement | null>(null)
 
 function handleImageFile(e: Event) {
   const input = e.target as HTMLInputElement
@@ -107,9 +110,12 @@ function loadImageFile(file: File) {
       URL.revokeObjectURL(url)
       return
     }
-    // 生成预览
-    previewImage(img)
+    // 保存原始图片引用
+    loadedImage.value = img
+    // 关键: 先设 URL 触发 Vue 渲染 canvas 到 DOM, 再绘制
     imagePreviewUrl.value = url
+    // 等待 Vue nextTick (canvas 出现在 DOM)
+    nextTick(() => previewImage(img))
   }
   img.onerror = () => {
     showToast('图片加载失败', 'error')
@@ -128,11 +134,24 @@ function previewImage(img: HTMLImageElement) {
   if (ratio >= 1) { outW = longEdge; outH = Math.round(longEdge / ratio) }
   else { outH = longEdge; outW = Math.round(longEdge * ratio) }
 
+  // 保证最小尺寸不小于 1
+  outW = Math.max(1, outW)
+  outH = Math.max(1, outH)
+
   canvas.width = outW
   canvas.height = outH
   const ctx = canvas.getContext('2d')!
+  // 确保默认 composite 模式, 避免预乘 alpha 问题
+  ctx.globalCompositeOperation = 'source-over'
   ctx.drawImage(img, 0, 0, outW, outH)
 }
+
+/** slider 变化时重新绘制预览 */
+watch(imageLongEdge, () => {
+  if (loadedImage.value) {
+    previewImage(loadedImage.value)
+  }
+})
 
 /** 图片转换 -> Pattern 并保存 */
 async function processImage() {
@@ -149,14 +168,36 @@ async function processImage() {
 
     // 收集所有颜色并构建 palette (按遇到顺序)
     const colorMap = new Map<string, number>() // "r,g,b" -> index
-    const palette: { index: number; rgb: [number, number, number]; code: null; name: null }[] = []
+    const palette: {
+      index: number
+      rgb: [number, number, number]
+      code: string | null
+      name: string | null
+      beadRgb: [number, number, number] | null
+      delta: number | undefined
+    }[] = []
 
     function getOrCreateIndex(r: number, g: number, b: number): number {
       const key = `${r},${g},${b}`
       if (colorMap.has(key)) return colorMap.get(key)!
       const idx = palette.length
       colorMap.set(key, idx)
-      palette.push({ index: idx, rgb: [r, g, b], code: null, name: null })
+
+      // MARD 色卡匹配 (Lab 最近邻, 对齐 Python palette.py)
+      let code: string | null = null
+      let name: string | null = null
+      let beadRgb: [number, number, number] | null = null
+      let delta: number | undefined = undefined
+
+      const match = matchMardColor(r, g, b)
+      if (match) {
+        code = match.code
+        name = match.name
+        beadRgb = match.beadRgb
+        delta = match.delta
+      }
+
+      palette.push({ index: idx, rgb: [r, g, b], code, name, beadRgb, delta })
       return idx
     }
 
@@ -345,7 +386,7 @@ const imageCanvasStyle = computed(() => {
 </template>
 
 <style scoped lang="scss">
-.import-view { height: calc(100vh - $header-height); overflow-y: auto; @include scrollbar-thin; }
+.import-view { height: 100%; overflow-y: auto; @include scrollbar-thin; }
 .import-content { max-width: 720px; margin: 0 auto; padding: 32px 24px 60px; }
 .import-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
 .import-subtitle { font-size: 14px; color: $color-text-secondary; line-height: 1.6; margin-bottom: 24px; }

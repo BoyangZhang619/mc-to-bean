@@ -300,7 +300,7 @@ function formatDate(ts: number): string {
 
 <style scoped lang="scss">
 .gallery-view {
-  height: calc(100vh - $header-height);
+  height: 100%;
   overflow-y: auto;
   @include scrollbar-thin;
 }

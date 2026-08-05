@@ -129,6 +129,46 @@ function getThumb(pattern: Pattern): string {
         <span class="loading-text">加载中...</span>
       </div>
 
+      <!-- Fabric 模组 -->
+      <section class="mod-section">
+        <div class="mod-content">
+          <div class="mod-info">
+            <h2 class="section-title">Fabric 模组</h2>
+            <p class="mod-desc">
+              游戏内安装 Fabric 模组后，使用 <code>/perler section</code> 或 <code>/perler view</code>
+              正交视图采样方块/物品纹理，MARD 色卡自动取色，F9 截图快捷键，一键导出契约 JSON。
+              导出的 JSON 可直接在此 Web 平台导入编辑，无缝衔接拼豆图纸制作流程。
+            </p>
+            <a
+              href="https://github.com/BoyangZhang619/mc-to-bean/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mod-download-btn"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>下载模组 (GitHub Releases)</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="7" y1="17" x2="17" y2="7"/>
+                <polyline points="7 7 17 7 17 17"/>
+              </svg>
+            </a>
+          </div>
+          <div class="mod-icon">
+            <svg width="56" height="56" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="8" width="48" height="48" rx="8" fill="#111" />
+              <rect x="16" y="16" width="14" height="14" rx="2" fill="#555" />
+              <rect x="34" y="16" width="14" height="14" rx="2" fill="#777" />
+              <rect x="16" y="34" width="14" height="14" rx="2" fill="#777" />
+              <rect x="34" y="34" width="14" height="14" rx="2" fill="#555" />
+            </svg>
+          </div>
+        </div>
+      </section>
+
       <!-- 平台特性 -->
       <section class="features">
         <h2 class="section-title">功能特性</h2>
@@ -177,7 +217,7 @@ function getThumb(pattern: Pattern): string {
 
 <style scoped lang="scss">
 .home-view {
-  height: calc(100vh - $header-height);
+  height: 100%;
   overflow-y: auto;
   @include scrollbar-thin;
 }
@@ -366,6 +406,73 @@ function getThumb(pattern: Pattern): string {
 .loading-text {
   font-size: 13px;
   color: $color-mid;
+}
+
+// Fabric 模组板块
+.mod-section {
+  margin-top: 40px;
+  background: $color-white;
+  border: 1px solid $color-light;
+  border-radius: $radius-lg;
+  overflow: hidden;
+}
+
+.mod-content {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 28px 32px;
+
+  @include mobile {
+    flex-direction: column;
+    padding: 20px 24px;
+    gap: 16px;
+  }
+}
+
+.mod-info {
+  flex: 1;
+}
+
+.mod-desc {
+  font-size: 14px;
+  color: $color-text-secondary;
+  line-height: 1.7;
+  margin: 12px 0 18px;
+
+  code {
+    background: $color-bg;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: monospace;
+    color: $color-dark;
+  }
+}
+
+.mod-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: $color-black;
+  color: $color-white;
+  border-radius: $radius-md;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $transition-fast;
+  text-decoration: none;
+
+  &:hover {
+    background: $color-dark;
+    transform: translateY(-1px);
+    box-shadow: $shadow-md;
+  }
+}
+
+.mod-icon {
+  flex-shrink: 0;
 }
 
 .features {

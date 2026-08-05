@@ -77,7 +77,7 @@ def collect_tasks() -> tuple:
 
 
 def _convert_one(args: tuple) -> tuple:
-    """单张纹理 → 图纸 (worker 进程执行)。"""
+    """单张纹理 → 图纸 PNG + 契约 JSON (worker 进程执行)。"""
     src, dst, w, h = args
     try:
         os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -90,9 +90,43 @@ def _convert_one(args: tuple) -> tuple:
         title = f"{os.path.basename(src)}  ({w}x{h} 豆)"
         page = build_page([img], [title], opts)
         page.save(dst)
+        write_json(dst, img, opts)
         return (dst, True, None)
     except Exception as e:
         return (dst, False, f"{type(e).__name__}: {e}")
+
+
+def _json_only(args: tuple) -> tuple:
+    """只生成缺失的契约 JSON (单行压缩), 不渲染 PNG (worker 进程执行)。"""
+    src, dst, w, h = args
+    json_path = os.path.splitext(dst)[0] + ".json"
+    try:
+        img = load_texture(src)
+        opts = RenderOptions(
+            mode="square", scale=64, bg=BG,
+            grid=True, legend=True, legend_style="simple", numbers=True,
+            palette=load_palette(BRAND),
+        )
+        if opts.palette:
+            opts.bead_map = {}
+            from palette import match_all
+            colors = sorted(set(img.getpixel((x, y)) for y in range(h)
+                                for x in range(w)))
+            match_all(colors, opts.palette, opts.bead_map)
+        os.makedirs(os.path.dirname(json_path), exist_ok=True)
+        write_json(json_path, img, opts)
+        return (json_path, True, None)
+    except Exception as e:
+        return (json_path, False, f"{type(e).__name__}: {e}")
+
+
+def write_json(json_path: str, img: Image.Image, opts: RenderOptions) -> None:
+    """契约 JSON 写入 (单行压缩形式, 供 Web 官方图纸区使用)。"""
+    from texture_to_pattern import build_json
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(build_json(os.path.splitext(os.path.basename(json_path))[0],
+                             img, opts), f, ensure_ascii=False,
+                  separators=(",", ":"))
 
 
 def main() -> int:
@@ -102,6 +136,8 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="强制重新转换已存在的输出")
     parser.add_argument("--limit", type=int, default=0,
                         help="只转换前 N 张 (调试用, 0=全部)")
+    parser.add_argument("--json-only", action="store_true",
+                        help="只生成缺失的契约 JSON (单行压缩), 不渲染 PNG")
     args = parser.parse_args()
 
     if not os.path.isdir(ASSETS_DIR):
@@ -112,9 +148,15 @@ def main() -> int:
     if args.limit:
         tasks = tasks[: args.limit]
 
+    worker = _json_only if args.json_only else _convert_one
+
     pending = tasks
     if not args.force:
-        pending = [t for t in tasks if not os.path.exists(t[1])]
+        def _done(t):
+            if args.json_only:
+                return os.path.exists(os.path.splitext(t[1])[0] + ".json")
+            return os.path.exists(t[1])
+        pending = [t for t in tasks if not _done(t)]
     print(f"[信息] 扫描完成: 共 {len(tasks)} 张, 跳过 {len(skipped)} 张, "
           f"待转换 {len(pending)} 张 (并行 {args.jobs})")
 
@@ -122,7 +164,7 @@ def main() -> int:
     ok = fail = 0
     done = 0
     with Pool(args.jobs) as pool:
-        for dst, success, err in pool.imap_unordered(_convert_one, pending, chunksize=4):
+        for dst, success, err in pool.imap_unordered(worker, pending, chunksize=4):
             done += 1
             if success:
                 ok += 1

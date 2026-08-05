@@ -110,12 +110,12 @@ const zoomPercent = computed(() => Math.round(editor.viewport.zoom * 100))
       </button>
       <button
         class="tool-btn"
-        :class="{ active: editor.showNumbers }"
-        title="显示颜色序号"
-        @click="editor.showNumbers = !editor.showNumbers"
+        :class="{ active: editor.gridLabelMode !== 'none' }"
+        :title="`网格标注: ${editor.gridLabelMode === 'none' ? '关闭' : editor.gridLabelMode === 'serial' ? '序列号' : '豆号'}`"
+        @click="editor.gridLabelMode = editor.gridLabelMode === 'none' ? 'serial' : editor.gridLabelMode === 'serial' ? 'code' : 'none'"
       >
         <Icon name="info" :size="20" />
-        <span class="tool-label">序号</span>
+        <span class="tool-label">{{ editor.gridLabelMode === 'none' ? '标注' : editor.gridLabelMode === 'serial' ? '序号' : '豆号' }}</span>
       </button>
     </div>
 

@@ -1,0 +1,1 @@
+{"name":"trial_omen","width":5,"height":5,"cell_size_mm":5,"palette":[{"index":0,"rgb":[255,255,255],"name":"T1","code":"T1","delta":0.0,"warn":false},{"index":1,"rgb":[16,174,176],"name":"C15","code":"C15","delta":8.0,"warn":false}],"grid":[[0,1,1,1,0],[1,1,1,1,1],[1,0,1,0,1],[0,1,1,1,0],[0,1,0,1,0]]}

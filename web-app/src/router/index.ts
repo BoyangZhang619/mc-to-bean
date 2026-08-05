@@ -28,6 +28,16 @@ const router = createRouter({
       name: 'preview',
       component: () => import('@/views/PreviewView.vue'),
     },
+    {
+      path: '/official',
+      name: 'official',
+      component: () => import('@/views/OfficialGalleryView.vue'),
+    },
+    {
+      path: '/tools/fonts',
+      name: 'font-generator',
+      component: () => import('@/views/FontGeneratorView.vue'),
+    },
   ],
 })
 

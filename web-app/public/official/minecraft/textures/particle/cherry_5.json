@@ -1,0 +1,1 @@
+{"name":"cherry_5","width":3,"height":3,"cell_size_mm":5,"palette":[{"index":0,"rgb":[255,255,255],"name":"T1","code":"T1","delta":0.0,"warn":false},{"index":1,"rgb":[224,118,174],"name":"E12","code":"E12","delta":8.91,"warn":false},{"index":2,"rgb":[218,107,166],"name":"E4","code":"E4","delta":8.72,"warn":false}],"grid":[[0,1,1],[1,1,1],[2,1,0]]}

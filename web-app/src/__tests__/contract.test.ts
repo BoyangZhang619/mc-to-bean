@@ -5,8 +5,8 @@
 import { describe, it, expect } from 'vitest'
 import { parseContractJson, exportContractJson } from '@/utils/contract'
 import { floodFill } from '@/utils/floodFill'
-import { luma, exportPatternPanelPng, exportFullPng } from '@/utils/renderer'
-import type { Pattern } from '@/types'
+import { luma, groupByBeadCode, exportPatternPanelPng, exportFullPng } from '@/utils/renderer'
+import type { Pattern, PaletteEntry } from '@/types'
 
 // ---- renderer 工具函数 ----
 
@@ -24,6 +24,121 @@ describe('renderer luma', () => {
     expect(luma(50, 50, 50)).toBeLessThan(150)
     // 浅色 > 150 -> 黑字
     expect(luma(200, 200, 200)).toBeGreaterThan(150)
+  })
+})
+
+// ---- groupByBeadCode (豆号合并, 对齐 Python group_by_bead) ----
+
+describe('groupByBeadCode', () => {
+  /** 辅助: 创建测试 Pattern 的 palette + grid */
+  function makePalette(entries: { index: number; rgb: [number, number, number]; code: string | null; beadRgb?: [number, number, number] }[]): PaletteEntry[] {
+    return entries.map((e) => ({
+      index: e.index,
+      rgb: e.rgb,
+      code: e.code,
+      name: e.code ? `Name-${e.code}` : null,
+      beadRgb: e.beadRgb ?? null,
+    }))
+  }
+
+  it('groups entries by same code and sums counts', () => {
+    const palette = makePalette([
+      { index: 0, rgb: [200, 100, 50], code: 'A01', beadRgb: [200, 100, 50] },
+      { index: 1, rgb: [210, 105, 55], code: 'A01', beadRgb: [200, 100, 50] },
+      { index: 2, rgb: [50, 200, 100], code: 'B01', beadRgb: [50, 200, 100] },
+    ])
+    // Grid: mostly first color, some second (same code), some third (different code)
+    const grid = [
+      [0, 0, 0, 0, 1],   // 4 of idx=0, 1 of idx=1
+      [2, 2, 0, 0, 0],   // 2 of idx=2, 3 of idx=0
+    ]
+    // Counts: idx0=7, idx1=1, idx2=2
+
+    const groups = groupByBeadCode(palette, grid)
+    // A01 should merge: total count = 7+1 = 8
+    // B01: count = 2
+    expect(groups).toHaveLength(2)
+    expect(groups[0].code).toBe('A01')
+    expect(groups[0].count).toBe(8)
+    expect(groups[0].serial).toBe(1)
+    expect(groups[0].entries).toHaveLength(2)
+    expect(groups[1].code).toBe('B01')
+    expect(groups[1].count).toBe(2)
+    expect(groups[1].serial).toBe(2)
+    expect(groups[1].entries).toHaveLength(1)
+  })
+
+  it('representative is the entry with most pixels', () => {
+    const palette = makePalette([
+      { index: 0, rgb: [200, 100, 50], code: 'A01', beadRgb: [200, 100, 50] },
+      { index: 1, rgb: [210, 105, 55], code: 'A01', beadRgb: [210, 105, 55] },
+    ])
+    // idx=0: 1 pixel, idx=1: 3 pixels → representative should be idx=1
+    const grid = [[0, 1, 1, 1]]
+    const groups = groupByBeadCode(palette, grid)
+    expect(groups).toHaveLength(1)
+    expect(groups[0].representative.index).toBe(1)
+  })
+
+  it('tiebreaker: keeps first-appearing entry when counts equal', () => {
+    const palette = makePalette([
+      { index: 0, rgb: [200, 100, 50], code: 'A01', beadRgb: [200, 100, 50] },
+      { index: 1, rgb: [210, 105, 55], code: 'A01', beadRgb: [210, 105, 55] },
+    ])
+    // Equal counts → keep idx=0 (first in palette)
+    const grid = [[0, 1]]
+    const groups = groupByBeadCode(palette, grid)
+    expect(groups[0].representative.index).toBe(0)
+  })
+
+  it('null code entries are not merged', () => {
+    const palette = makePalette([
+      { index: 0, rgb: [100, 100, 100], code: null },
+      { index: 1, rgb: [200, 200, 200], code: null },
+    ])
+    const grid = [[0, 1]]
+    const groups = groupByBeadCode(palette, grid)
+    expect(groups).toHaveLength(2)
+    expect(groups[0].code).toBeNull()
+    expect(groups[0].count).toBe(1)
+    expect(groups[1].code).toBeNull()
+    expect(groups[1].count).toBe(1)
+  })
+
+  it('mixes merged and unmerged entries in palette order', () => {
+    const palette = makePalette([
+      { index: 0, rgb: [100, 100, 100], code: 'H01', beadRgb: [100, 100, 100] },
+      { index: 1, rgb: [128, 128, 128], code: null },
+      { index: 2, rgb: [110, 110, 110], code: 'H01', beadRgb: [100, 100, 100] },
+    ])
+    const grid = [[0, 1, 2]]
+    const groups = groupByBeadCode(palette, grid)
+    // Order: H01 group (idx0+idx2 merged) then null entry (idx1)
+    expect(groups).toHaveLength(2)
+    expect(groups[0].code).toBe('H01')
+    expect(groups[0].count).toBe(2) // idx0 + idx2
+    expect(groups[0].serial).toBe(1)
+    expect(groups[1].code).toBeNull()
+    expect(groups[1].count).toBe(1)
+    expect(groups[1].serial).toBe(2)
+  })
+
+  it('swatchColor uses beadRgb when available', () => {
+    const palette = makePalette([
+      { index: 0, rgb: [200, 100, 50], code: 'A01', beadRgb: [199, 99, 49] },
+    ])
+    const grid = [[0]]
+    const groups = groupByBeadCode(palette, grid)
+    expect(groups[0].swatchColor).toEqual([199, 99, 49])
+  })
+
+  it('swatchColor falls back to rgb when beadRgb is null', () => {
+    const palette: PaletteEntry[] = [
+      { index: 0, rgb: [200, 100, 50], code: 'A01', name: 'Test', beadRgb: null },
+    ]
+    const grid = [[0]]
+    const groups = groupByBeadCode(palette, grid)
+    expect(groups[0].swatchColor).toEqual([200, 100, 50])
   })
 })
 
